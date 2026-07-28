@@ -1,0 +1,20 @@
+.DS_Store
+
+# original sample invoices contain real bank account/SWIFT/TIN details
+/*.pdf
+
+# Go
+backend/bin/
+backend/*.exe
+backend/coverage.out
+
+# env files
+.env
+backend/.env
+frontend/.env*.local
+
+# local uploads (generated PDFs, logos uploaded via UI)
+backend/uploads/
+
+# database backups
+backups/

@@ -1,0 +1,157 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+
+	"github.com/petrodata/invoice-transmittal/internal/audit"
+	"github.com/petrodata/invoice-transmittal/internal/auth"
+	"github.com/petrodata/invoice-transmittal/internal/bankaccount"
+	"github.com/petrodata/invoice-transmittal/internal/client"
+	"github.com/petrodata/invoice-transmittal/internal/config"
+	"github.com/petrodata/invoice-transmittal/internal/dashboard"
+	"github.com/petrodata/invoice-transmittal/internal/db"
+	"github.com/petrodata/invoice-transmittal/internal/db/sqlc"
+	"github.com/petrodata/invoice-transmittal/internal/invoice"
+	"github.com/petrodata/invoice-transmittal/internal/pdf"
+	"github.com/petrodata/invoice-transmittal/internal/storage"
+	"github.com/petrodata/invoice-transmittal/internal/transmittal"
+)
+
+func main() {
+	_ = godotenv.Load()
+	cfg := config.Load()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Printf("warning: could not connect to database yet: %v", err)
+	}
+
+	store, err := storage.New(cfg.UploadsDir)
+	if err != nil {
+		log.Fatalf("could not initialize uploads storage: %v", err)
+	}
+
+	var queries *sqlc.Queries
+	if pool != nil {
+		queries = sqlc.New(pool)
+	}
+
+	pdfRenderer, err := pdf.NewRenderer(cfg.TemplatesDir)
+	if err != nil {
+		log.Fatalf("could not load pdf templates: %v", err)
+	}
+
+	browser, err := pdf.NewBrowser(cfg.ChromePath)
+	if err != nil {
+		log.Fatalf("could not launch headless chromium for pdf rendering: %v", err)
+	}
+	defer browser.Close()
+
+	authHandler := auth.NewHandler(queries, cfg.JWTSecret)
+	clientHandler := client.NewHandler(queries, store)
+	invoiceHandler := invoice.NewHandler(pool, queries, store, pdfRenderer, browser)
+	transmittalHandler := transmittal.NewHandler(pool, queries, pdfRenderer, browser)
+	dashboardHandler := dashboard.NewHandler(queries)
+	auditHandler := audit.NewHandler(queries)
+	bankAccountHandler := bankaccount.NewHandler(queries)
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowCredentials: true,
+	}))
+
+	r.Get("/health", healthHandler(pool))
+
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadsDir))))
+
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Post("/auth/login", authHandler.Login)
+
+		r.Group(func(r chi.Router) {
+			r.Use(auth.RequireAuth(cfg.JWTSecret))
+
+			r.Get("/auth/me", authHandler.Me)
+
+			r.Get("/clients", clientHandler.List)
+			r.Get("/clients/{id}", clientHandler.Get)
+
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireRole("admin", "gm"))
+				r.Post("/clients", clientHandler.Create)
+				r.Put("/clients/{id}", clientHandler.Update)
+				r.Delete("/clients/{id}", clientHandler.Delete)
+			})
+
+			r.Get("/invoices", invoiceHandler.List)
+			r.Get("/invoices/{id}", invoiceHandler.Get)
+			r.Post("/invoices", invoiceHandler.Create)
+			r.Get("/invoices/{id}/pdf", invoiceHandler.PDF)
+
+			r.Get("/transmittals", transmittalHandler.List)
+			r.Get("/transmittals/{id}", transmittalHandler.Get)
+			r.Post("/transmittals", transmittalHandler.Create)
+			r.Get("/transmittals/{id}/pdf", transmittalHandler.PDF)
+
+			r.Get("/dashboard/summary", dashboardHandler.Summary)
+
+			r.Get("/bank-accounts", bankAccountHandler.List)
+
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireRole("admin", "gm"))
+				r.Patch("/invoices/{id}/status", invoiceHandler.UpdateStatus)
+				r.Patch("/transmittals/{id}/status", transmittalHandler.UpdateStatus)
+				r.Post("/bank-accounts", bankAccountHandler.Create)
+				r.Put("/bank-accounts/{id}", bankAccountHandler.Update)
+				r.Delete("/bank-accounts/{id}", bankAccountHandler.Delete)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(auth.RequireRole("admin"))
+				r.Get("/audit-log", auditHandler.List)
+				r.Get("/users", authHandler.ListUsers)
+				r.Post("/users", authHandler.CreateUser)
+			})
+		})
+	})
+
+	log.Printf("petrodata invoice-transmittal api listening on :%s", cfg.Port)
+	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func healthHandler(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		status := "ok"
+		dbStatus := "unreachable"
+		if pool != nil {
+			if err := pool.Ping(r.Context()); err == nil {
+				dbStatus = "ok"
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"status": status,
+			"db":     dbStatus,
+		})
+	}
+}

@@ -1,0 +1,150 @@
+{{define "standard.html"}}
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 0 8px;
+  }
+  .logo-wrap { text-align: center; margin-bottom: 6px; }
+  .logo-wrap img { height: 95px; }
+  h1.title {
+    text-align: center;
+    color: #1f5fa8;
+    font-size: 18px;
+    letter-spacing: 2px;
+    margin: 0 0 10px 0;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  .meta-table td { border: 1px solid #999; padding: 3px 8px; }
+  .meta-table td:first-child { font-weight: bold; width: 30%; background: #f4f6f8; }
+  .party-table { margin-top: 8px; }
+  .party-table td {
+    border: 1px solid #999;
+    vertical-align: top;
+    padding: 6px 8px;
+    width: 50%;
+  }
+  .party-table .label { font-weight: bold; margin-bottom: 4px; }
+  .section-title {
+    color: #1f5fa8;
+    font-weight: bold;
+    font-size: 12px;
+    margin: 10px 0 3px 0;
+  }
+  .items-table th, .items-table td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: left;
+  }
+  .items-table th { background: #f4f6f8; }
+  .items-table td.num, .items-table th.num { text-align: right; }
+  .summary-table { margin-top: 8px; }
+  .summary-table td { border: 1px solid #999; padding: 3px 8px; }
+  .summary-table td:first-child { font-weight: bold; width: 70%; background: #f4f6f8; }
+  .summary-table td.num { text-align: right; }
+  .summary-words td { font-style: italic; }
+  .payment-table { margin-top: 8px; }
+  .payment-table td { border: 1px solid #999; padding: 3px 8px; }
+  .payment-table td:first-child { font-weight: bold; width: 30%; background: #f4f6f8; }
+  .signature { margin-top: 12px; }
+  .signature .label { font-weight: bold; }
+  .notes { margin-top: 8px; font-size: 10px; color: #333; }
+  .notes ul { margin: 4px 0 0 16px; padding: 0; }
+</style>
+</head>
+<body>
+  <div class="logo-wrap"><img src="{{.Company.LogoDataURI}}" alt="PetroData"></div>
+  <h1 class="title">{{if eq .Type "proforma"}}PROFORMA INVOICE{{else}}INVOICE{{end}}</h1>
+
+  <table class="meta-table">
+    <tr><td>Invoice No.</td><td>{{.InvoiceNo}}</td></tr>
+    <tr><td>Invoice Creation Date</td><td>{{date .InvoiceDate}}</td></tr>
+    <tr><td>Due Date</td><td>{{.DueDate}}</td></tr>
+    <tr><td>Currency</td><td>{{.Currency}}</td></tr>
+  </table>
+
+  <table class="party-table">
+    <tr>
+      <td>
+        <div class="label">FROM</div>
+        {{.Company.Name}}<br>
+        {{.Company.AddressLine1}}<br>
+        {{.Company.AddressLine2}}<br>
+        Telephone: {{.Company.Phone}}<br>
+        Email: {{.Company.Email}}<br>
+        Website: {{.Company.Website}}<br>
+        TIN: {{.Company.TIN}}<br>
+        RC Number: {{.Company.RCNumber}}
+      </td>
+      <td>
+        <div class="label">BILL TO</div>
+        {{.Client.Name}}<br>
+        {{.Client.BillingAddress}}<br>
+        {{if .Client.AttentionName}}<br><strong>Attention:</strong> {{.Client.AttentionName}}{{end}}
+      </td>
+    </tr>
+  </table>
+
+  {{range $i, $section := .Sections}}
+    {{if $section.Title}}<div class="section-title">{{$section.Title}}</div>{{end}}
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="num">Qty</th>
+          <th class="num">Rate</th>
+          <th class="num">Amount ({{$.Currency}})</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $section.Items}}
+        <tr>
+          <td>{{.Description}}</td>
+          <td class="num">{{qty .Quantity}}</td>
+          <td class="num">{{if .Rate}}{{money .Rate}}{{end}}</td>
+          <td class="num">{{money .Amount}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  {{end}}
+
+  <table class="summary-table">
+    <tr><td>Subtotal ({{.Currency}})</td><td class="num">{{money .Subtotal}}</td></tr>
+    <tr><td>VAT ({{.VATRate}}%)</td><td class="num">{{money .VATAmount}}</td></tr>
+    <tr><td>Grand Total ({{.Currency}})</td><td class="num">{{money .GrandTotal}}</td></tr>
+    <tr class="summary-words"><td>Grand Total in Words</td><td>{{.AmountInWords}}</td></tr>
+  </table>
+
+  <table class="payment-table">
+    <tr><td>Bank Name</td><td>{{.Bank.BankName}}</td></tr>
+    <tr><td>Account Name</td><td>{{.Bank.AccountName}}</td></tr>
+    <tr><td>Account Number</td><td>{{.Bank.AccountNumber}}</td></tr>
+    <tr><td>SWIFT Code</td><td>{{.Bank.SwiftCode}}</td></tr>
+    <tr><td>Correspondent Bank</td><td>{{.Bank.CorrespondentBank}}</td></tr>
+    <tr><td>Correspondent Account Number</td><td>{{.Bank.CorrespondentAccountNumber}}</td></tr>
+    <tr><td>Purpose</td><td>{{.Bank.Purpose}}</td></tr>
+  </table>
+
+  <div class="signature">
+    Prepared By:<br><br>
+    {{.PreparedBy.Name}}<br>
+    {{.PreparedBy.Role}}
+  </div>
+
+  {{if .Notes}}
+  <div class="notes">
+    <strong>Invoice Notes</strong>
+    <ul><li>{{.Notes}}</li></ul>
+  </div>
+  {{end}}
+</body>
+</html>
+{{end}}

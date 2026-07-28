@@ -1,0 +1,152 @@
+{{define "proforma.html"}}
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 0;
+  }
+  .outer { border: 2px solid #1a1a1a; padding: 10px; }
+  h1.title {
+    text-align: center;
+    font-size: 16px;
+    letter-spacing: 2px;
+    margin: 0 0 12px 0;
+    border-bottom: 1px solid #999;
+    padding-bottom: 8px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  .header-table td { vertical-align: top; width: 50%; padding: 4px 8px; }
+  .header-table img { height: 55px; margin-bottom: 4px; }
+  .header-table .company-name { font-weight: bold; }
+  .subject {
+    text-align: center;
+    font-weight: bold;
+    margin: 10px 0;
+    text-transform: uppercase;
+  }
+  .meta-table td { border: 1px solid #999; padding: 4px 8px; text-align: center; }
+  .meta-table th { border: 1px solid #999; padding: 4px 8px; background: #f4f6f8; }
+  .items-table { margin-top: 12px; }
+  .items-table th, .items-table td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: left;
+  }
+  .items-table th { background: #f4f6f8; }
+  .items-table td.num, .items-table th.num { text-align: right; }
+  .totals-table { margin-top: 6px; }
+  .totals-table td { padding: 2px 6px; }
+  .totals-table td.label { text-align: right; font-weight: bold; width: 85%; }
+  .totals-table td.num { text-align: right; }
+  .pls-pay { margin-top: 10px; font-weight: bold; }
+  .bottom-table { margin-top: 20px; }
+  .bottom-table td { vertical-align: top; width: 50%; padding: 4px 8px; }
+  .bottom-table .row { margin-bottom: 6px; }
+  .sig-line { border-top: 1px solid #999; margin-top: 24px; padding-top: 2px; }
+</style>
+</head>
+<body>
+<div class="outer">
+  <h1 class="title">PROFORMA INVOICE</h1>
+
+  <table class="header-table">
+    <tr>
+      <td>
+        {{if .Client.LogoDataURI}}<img src="{{.Client.LogoDataURI}}" alt="{{.Client.Name}}"><br>{{end}}
+        <div class="company-name">{{.Client.Name}}</div>
+        {{.Client.BillingAddress}}
+      </td>
+      <td>
+        <img src="{{.Company.LogoDataURI}}" alt="PetroData"><br>
+        <div class="company-name">{{.Company.Name}}</div>
+        {{.Company.AddressLine1}}<br>
+        Tax ID: {{.Company.TIN}}<br>
+        Invoice No: {{.InvoiceNo}}<br>
+        {{if .PoNumber}}PO Number: {{.PoNumber}}<br>{{end}}
+        E-mail: {{.Company.Email}}<br>
+        {{if .InvoicePeriod}}Invoice Period: {{.InvoicePeriod}}{{end}}
+      </td>
+    </tr>
+  </table>
+
+  {{if .InvoicePeriod}}<div class="subject">{{.InvoicePeriod}}</div>{{end}}
+
+  <table class="meta-table">
+    <tr>
+      <th>{{if .VendorCode}}Vendor Code{{else}}Client Code{{end}}</th>
+      <th>Invoice No</th>
+      <th>Date Prepared</th>
+      <th>Currency</th>
+    </tr>
+    <tr>
+      <td>{{.VendorCode}}{{.Client.Code}}</td>
+      <td>{{.InvoiceNo}}</td>
+      <td>{{date .InvoiceDate}}</td>
+      <td>{{.Currency}}</td>
+    </tr>
+  </table>
+
+  {{range .Sections}}
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>Item Code</th>
+        <th>Item Description</th>
+        <th class="num">Units</th>
+        <th class="num">Rate {{$.Currency}}</th>
+        <th class="num">Total {{$.Currency}}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Items}}
+      <tr>
+        <td>{{.ItemCode}}</td>
+        <td>{{.Description}}</td>
+        <td class="num">{{qty .Quantity}}</td>
+        <td class="num">{{if .Rate}}{{money .Rate}}{{end}}</td>
+        <td class="num">{{money .Amount}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{end}}
+
+  <table class="totals-table">
+    <tr><td class="label">Total (Excl)</td><td class="num">{{money .Subtotal}}</td></tr>
+    <tr><td class="label">VAT {{.VATRate}}%</td><td class="num">{{money .VATAmount}}</td></tr>
+    <tr><td class="label">Grand Total</td><td class="num">{{money .GrandTotal}}</td></tr>
+  </table>
+
+  <div class="pls-pay">PLS PAY: {{.AmountInWords}}</div>
+
+  <table class="bottom-table">
+    <tr>
+      <td>
+        <div class="row"><strong>Bank Details</strong></div>
+        Bank Name: {{.Bank.BankName}}<br>
+        Account No: {{.Bank.AccountNumber}}<br>
+        SWIFT Code: {{.Bank.SwiftCode}}<br>
+        Correspondence Bank: {{.Bank.CorrespondentBank}}<br>
+        Account No: {{.Bank.CorrespondentAccountNumber}}
+      </td>
+      <td>
+        <div class="row"><strong>Prepared by:</strong></div>
+        Name: {{.PreparedBy.Name}}
+        <div class="sig-line">Signature</div>
+        <div class="row" style="margin-top:14px;"><strong>Client Representative:</strong></div>
+        Name:
+        <div class="sig-line">Signature</div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>
+{{end}}
