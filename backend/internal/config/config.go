@@ -3,18 +3,20 @@ package config
 import (
 	"log"
 	"os"
+	"strings"
 )
 
 const devJWTSecret = "dev-secret-change-me"
 
 type Config struct {
-	Port         string
-	DatabaseURL  string
-	JWTSecret    string
-	Env          string
-	UploadsDir   string
-	TemplatesDir string
-	ChromePath   string
+	Port               string
+	DatabaseURL        string
+	JWTSecret          string
+	Env                string
+	UploadsDir         string
+	TemplatesDir       string
+	ChromePath         string
+	CORSAllowedOrigins []string
 }
 
 func Load() Config {
@@ -26,6 +28,11 @@ func Load() Config {
 		UploadsDir:   getEnv("UPLOADS_DIR", "./uploads"),
 		TemplatesDir: getEnv("TEMPLATES_DIR", "./templates/pdf"),
 		ChromePath:   getEnv("CHROME_PATH", ""),
+		// Comma-separated list — only matters for browsers hitting this API
+		// directly (bypassing the Caddy reverse proxy, which serves the
+		// frontend and backend from the same origin and needs no CORS at
+		// all). Defaults to local dev; set for real origins in production.
+		CORSAllowedOrigins: strings.Split(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"), ","),
 	}
 
 	// A default JWT secret in production would let anyone forge valid

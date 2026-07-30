@@ -38,7 +38,7 @@ This starts:
 - `postgres` on `localhost:5435` (mapped off the default 5432 to avoid clashing with any local Postgres install)
 - `backend` on `localhost:8081` (`GET /health` for a liveness/DB check; mapped off 8080 to avoid clashing with other local services)
 - `frontend` on `localhost:3000`
-- `caddy` on `localhost:80`/`localhost:443` — a reverse proxy fronting both with a self-signed TLS cert (see [Deploying to the physical server](#deploying-to-the-physical-server)); the ports above are still directly reachable too, so on your laptop you can ignore Caddy and just use `localhost:3000`.
+- `caddy` on `localhost:80`/`localhost:443` — a reverse proxy fronting both with a self-signed TLS cert (see [Deploying to the Ubuntu server](#deploying-to-the-ubuntu-server)); the ports above are still directly reachable too, so on your laptop you can ignore Caddy and just use `localhost:3000`.
 
 (Inside the Docker network, services still talk to each other on the standard ports — `postgres:5432`, `backend:8080`. The remapping above only affects host-machine access.)
 
@@ -72,38 +72,117 @@ npm run dev
 
 Visit <http://localhost:3000>.
 
-## Deploying to the physical server
+## Deploying to the Ubuntu server
 
-1. Copy `.env.example` to `.env` in the repo root and fill in real values —
-   at minimum a strong `POSTGRES_PASSWORD` and `JWT_SECRET`
-   (`openssl rand -base64 32`). `APP_ENV=production` makes the backend
-   refuse to start if `JWT_SECRET` is still the dev default, as a safety
-   net. Leave `NEXT_PUBLIC_API_URL` **empty** to use the bundled Caddy
-   reverse proxy (recommended, see step 4) — set it to a full URL only if
-   you're bypassing Caddy. Next.js bakes `NEXT_PUBLIC_*` vars in at
-   **build** time, so this must be set correctly *before*
-   `docker compose build`.
-2. `docker compose up -d --build`
-3. Change the default admin password immediately:
-   ```bash
-   docker compose exec postgres psql -U petrodata -d petrodata -c \
-     "UPDATE users SET password_hash = crypt('YOUR-NEW-PASSWORD', gen_salt('bf')) WHERE email = 'admin@petrodata.net';"
-   ```
-4. TLS is already handled: the `caddy` service in `docker-compose.yml`
-   fronts the frontend and backend on ports 80/443 using the `Caddyfile` at
-   the repo root, with a locally-trusted self-signed certificate (`tls
-   internal` — there's no public domain for this in-house deployment).
-   Visit `https://<server-lan-ip>` — the first visit will show a
-   certificate warning in the browser since it's self-signed; click through
-   it, or trust Caddy's local CA
+### Quick start
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/JpUnique/invoice-system/main/scripts/server-setup.sh -o server-setup.sh
+bash server-setup.sh
+```
+
+This is a one-time bootstrap: installs Docker if missing, clones the repo,
+generates a real `.env` (strong `JWT_SECRET`/`POSTGRES_PASSWORD`), and runs
+the first deploy. It's safe to re-run — every step skips itself if already
+done. The repo is private, so if cloning fails it'll tell you to run
+`gh auth login` (or set up an SSH deploy key) first.
+
+For every deploy after that, from inside the cloned repo:
+
+```bash
+./scripts/deploy.sh
+```
+
+This pulls the latest code, rebuilds, runs any new database migrations, and
+restarts — the thing to run whenever new commits land on `main`.
+
+### What the scripts do, spelled out
+
+1. `.env` is generated from `.env.example` with real secrets — at minimum a
+   strong `POSTGRES_PASSWORD` and `JWT_SECRET`. `APP_ENV=production` makes
+   the backend refuse to start if `JWT_SECRET` is still the dev default, as
+   a safety net. `NEXT_PUBLIC_API_URL` is left **empty** to use the bundled
+   Caddy reverse proxy (recommended — see below); Next.js bakes
+   `NEXT_PUBLIC_*` vars in at **build** time, so this has to be right
+   *before* `docker compose build` runs, which is why the script pauses for
+   you to review `.env` before deploying.
+2. `docker compose up -d --build` builds and starts postgres, backend,
+   frontend, and Caddy.
+3. `docker compose --profile tools run --rm migrate up` applies database
+   migrations. It runs as a one-off container on the same Docker network as
+   postgres, so it works regardless of `BIND_IP`/port configuration — no
+   need to install the `migrate` CLI on the host.
+4. TLS is already handled: `caddy` fronts the frontend and backend on ports
+   80/443 using the `Caddyfile` at the repo root, with a locally-trusted
+   self-signed certificate (`tls internal` — there's no public domain for
+   this in-house deployment). Visit `https://<server-ip>` — the first visit
+   shows a certificate warning since it's self-signed; click through it, or
+   trust Caddy's local CA
    (`docker compose exec caddy cat /data/caddy/pki/authorities/local/root.crt`)
    on client machines to remove the warning. If the server later gets a
    real domain, replace `tls internal` with the domain name in the
    `Caddyfile` for automatic Let's Encrypt certs instead.
-5. Set up scheduled backups (see below).
-6. Make sure Docker itself starts on boot (`systemctl enable docker` on
-   most Linux distros) — `restart: unless-stopped` on every service then
-   handles the rest of the recovery-after-reboot story.
+
+After the first deploy:
+
+- Change the default admin password immediately:
+
+  ```bash
+  docker compose exec postgres psql -U petrodata -d petrodata -c \
+    "UPDATE users SET password_hash = crypt('YOUR-NEW-PASSWORD', gen_salt('bf')) WHERE email = 'admin@petrodata.net';"
+  ```
+
+- Set up scheduled backups (see below).
+- Make sure Docker itself starts on boot (`systemctl enable docker`) —
+  `restart: unless-stopped` on every service then handles the rest of the
+  recovery-after-reboot story.
+
+### Running alongside other applications on this server
+
+By default every service binds to all interfaces (`0.0.0.0`), same as a
+single-app server. If this box already runs something else on ports
+80/443, Caddy will fail to start (`deploy.sh` checks for this up front and
+tells you plainly rather than half-deploying).
+
+The fix is to give this app its **own dedicated IP** so it never touches
+the other application's ports at all, even if both use 80/443:
+
+1. **Get a spare IP from your network/IT team** — one that's routable on
+   the same subnet as this server (or ask for a small VLAN if they'd
+   rather). This isn't something either of us can invent from the server
+   alone; it has to come from whoever manages your network.
+2. **Add it to the server's network interface.** Find your interface name
+   first (`ip addr` — something like `eth0` or `ens18`), then edit
+   `/etc/netplan/*.yaml` to add the new IP as a second address:
+
+   ```yaml
+   network:
+     ethernets:
+       eth0:                       # replace with your actual interface name
+         addresses:
+           - 10.0.0.5/24            # existing IP, unchanged
+           - 10.0.0.50/24           # the new dedicated IP your network team gave you
+   ```
+
+   Apply it safely — **`netplan try`** auto-reverts after 120 seconds if
+   the new config breaks connectivity, so a mistake can't lock you out over
+   SSH:
+
+   ```bash
+   sudo netplan try
+   ```
+
+   Only run `sudo netplan apply` (permanent, no auto-revert) once you've
+   confirmed `netplan try` worked and you can still reach the server.
+3. **Point this app at it.** In `.env`, set:
+
+   ```bash
+   BIND_IP=10.0.0.50
+   ```
+
+   Then `./scripts/deploy.sh`. Every service (Postgres, backend, frontend,
+   Caddy) now binds only to `10.0.0.50` — completely invisible on whatever
+   IP/ports the other application uses, no coordination with it required.
 
 ### Backups
 
@@ -117,7 +196,7 @@ uploads volume (client logos) to `backups/uploads-<timestamp>.tar.gz`
 into cron on the server:
 
 ```cron
-0 2 * * * cd /path/to/petrodata-invoice-transmittal && ./scripts/backup-db.sh >> backups/backup.log 2>&1
+0 2 * * * cd ~/invoice-system && ./scripts/backup-db.sh >> backups/backup.log 2>&1
 ```
 
 Restore the database with
@@ -132,7 +211,7 @@ uploads by extracting the tarball into the `uploads` volume, e.g.
 backend/            Go API (cmd/api entrypoint, internal/ packages per module)
 frontend/            Next.js app (src/app/, App Router)
 assets/              PetroData logo + client logos used for invoice branding
-scripts/             DB + uploads backup/restore scripts
+scripts/             Server bootstrap/deploy + DB/uploads backup/restore scripts
 docker-compose.yml   Deployment stack: postgres + backend + frontend + caddy
 Caddyfile            Reverse proxy config (TLS termination, path routing)
 .env.example         Template for the root .env (secrets, ports, build-time URLs)
