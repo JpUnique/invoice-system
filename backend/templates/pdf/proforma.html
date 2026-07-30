@@ -4,94 +4,232 @@
 <head>
 <meta charset="utf-8">
 <style>
+  :root {
+    --red: #d81f27;
+    --red-tint: #fdf1f1;
+    --green: #1a8a3a;
+    --ink: #18181b;
+    --muted: #71717a;
+    --line: #e4e4e7;
+    --panel: #fafafa;
+    --card-shadow: 0 1px 2px rgba(24, 24, 27, 0.05), 0 1px 6px rgba(24, 24, 27, 0.04);
+  }
   * { box-sizing: border-box; }
   body {
     font-family: "Helvetica Neue", Arial, sans-serif;
     font-size: 11px;
-    color: #1a1a1a;
+    line-height: 1.5;
+    color: var(--ink);
+    background: #fcfcfb;
     margin: 0;
     padding: 0;
   }
-  .outer { border: 2px solid #1a1a1a; padding: 10px; }
+  .accent-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--red) 50%, var(--green) 50%, var(--green) 100%);
+    margin-bottom: 16px;
+  }
   h1.title {
     text-align: center;
-    font-size: 16px;
-    letter-spacing: 2px;
-    margin: 0 0 12px 0;
-    border-bottom: 1px solid #999;
-    padding-bottom: 8px;
+    color: var(--red);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    margin: 0 0 14px 0;
   }
   table { width: 100%; border-collapse: collapse; }
-  .header-table td { vertical-align: top; width: 50%; padding: 4px 8px; }
-  .header-table img { height: 55px; margin-bottom: 4px; }
-  .header-table .company-name { font-weight: bold; }
+
+  .party-row { display: flex; gap: 14px; margin-bottom: 12px; }
+  .party-card {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 13px 15px;
+  }
+  .party-card.client { border-left: 3px solid var(--green); }
+  .party-card.company { border-left: 3px solid var(--red); }
+  .party-card .party-logo { height: 40px; margin-bottom: 8px; display: block; }
+  .party-card .label {
+    font-size: 8.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  .party-card.client .label { color: var(--green); }
+  .party-card.company .label { color: var(--red); }
+  .party-card .name { font-weight: 700; margin-bottom: 2px; }
+  .party-card .muted { color: var(--muted); }
+
   .subject {
     text-align: center;
-    font-weight: bold;
-    margin: 10px 0;
+    font-weight: 700;
+    margin: 4px 0 12px 0;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
   }
-  .meta-table td { border: 1px solid #999; padding: 4px 8px; text-align: center; }
-  .meta-table th { border: 1px solid #999; padding: 4px 8px; background: #f4f6f8; }
-  .items-table { margin-top: 12px; }
-  .items-table th, .items-table td {
-    border: 1px solid #999;
-    padding: 4px 6px;
+
+  .meta-strip {
+    display: flex;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .meta-strip .cell {
+    flex: 1;
+    padding: 7px 10px;
+    border-right: 1px solid var(--line);
+  }
+  .meta-strip .cell:last-child { border-right: none; }
+  .meta-strip .cell .k {
+    display: block;
+    font-size: 8.5px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .meta-strip .cell .v { font-weight: 600; }
+
+  .items-table {
+    margin-top: 4px;
+    margin-bottom: 4px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+  }
+  .items-table th {
+    background: var(--red-tint);
+    color: var(--ink);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
     text-align: left;
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--line);
   }
-  .items-table th { background: #f4f6f8; }
+  .items-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--line);
+  }
   .items-table td.num, .items-table th.num { text-align: right; }
-  .totals-table { margin-top: 6px; }
-  .totals-table td { padding: 2px 6px; }
-  .totals-table td.label { text-align: right; font-weight: bold; width: 85%; }
-  .totals-table td.num { text-align: right; }
-  .pls-pay { margin-top: 10px; font-weight: bold; }
-  .bottom-table { margin-top: 20px; }
-  .bottom-table td { vertical-align: top; width: 50%; padding: 4px 8px; }
-  .bottom-table .row { margin-bottom: 6px; }
-  .sig-line { border-top: 1px solid #999; margin-top: 24px; padding-top: 2px; }
+  .items-table td.amount { font-weight: 600; }
+  .items-table tbody tr:last-child td { border-bottom: none; }
+
+  .summary {
+    margin-top: 12px;
+    margin-left: auto;
+    width: 260px;
+  }
+  .summary .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    color: var(--muted);
+  }
+  .summary .row.discount .num { color: var(--green); }
+  .summary .row.total {
+    border-top: 1.5px solid var(--ink);
+    margin-top: 4px;
+    padding-top: 7px;
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .summary .row.total .num { color: var(--red); }
+
+  .pls-pay {
+    margin-top: 10px;
+    padding: 9px 13px;
+    background: var(--panel);
+    border-radius: 8px;
+    border-left: 3px solid var(--green);
+    font-weight: 700;
+  }
+
+  .bottom-row { display: flex; align-items: flex-start; gap: 14px; margin-top: 18px; }
+  .bottom-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 11px 15px;
+  }
+  .bottom-card.bank { flex: 1.5; }
+  .bottom-card.signatures { flex: 1; }
+  .bottom-card .heading {
+    font-size: 8.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .bottom-card .kv { display: flex; justify-content: space-between; padding: 2px 0; }
+  .bottom-card .kv .k { color: var(--muted); }
+  .bottom-card .kv .v { font-weight: 600; text-align: right; }
+
+  .sig-block .sig-line {
+    border-top: 1px solid var(--ink);
+    margin-top: 22px;
+    padding-top: 4px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .sig-block + .sig-block { margin-top: 14px; }
+
+  .footer {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2px;
+  }
 </style>
 </head>
 <body>
-<div class="outer">
+  <div class="accent-bar"></div>
   <h1 class="title">PROFORMA INVOICE</h1>
 
-  <table class="header-table">
-    <tr>
-      <td>
-        {{if .Client.LogoDataURI}}<img src="{{.Client.LogoDataURI}}" alt="{{.Client.Name}}"><br>{{end}}
-        <div class="company-name">{{.Client.Name}}</div>
-        {{.Client.BillingAddress}}
-      </td>
-      <td>
-        <img src="{{.Company.LogoDataURI}}" alt="PetroData"><br>
-        <div class="company-name">{{.Company.Name}}</div>
+  <div class="party-row">
+    <div class="party-card client">
+      {{if .Client.LogoDataURI}}<img class="party-logo" src="{{.Client.LogoDataURI}}" alt="{{.Client.Name}}">{{end}}
+      <div class="label">Client</div>
+      <div class="name">{{.Client.Name}}</div>
+      <div class="muted">{{.Client.BillingAddress}}</div>
+    </div>
+    <div class="party-card company">
+      <img class="party-logo" src="{{.Company.LogoDataURI}}" alt="PetroData">
+      <div class="label">From</div>
+      <div class="name">{{.Company.Name}}</div>
+      <div class="muted">
         {{.Company.AddressLine1}}<br>
-        Tax ID: {{.Company.TIN}}<br>
-        Invoice No: {{.InvoiceNo}}<br>
-        {{if .PoNumber}}PO Number: {{.PoNumber}}<br>{{end}}
-        E-mail: {{.Company.Email}}<br>
-        {{if .InvoicePeriod}}Invoice Period: {{.InvoicePeriod}}{{end}}
-      </td>
-    </tr>
-  </table>
+        Tax ID: {{.Company.TIN}} &middot; Email: {{.Company.Email}}<br>
+        Invoice No: {{.InvoiceNo}}
+        {{if .PoNumber}}&middot; PO: {{.PoNumber}}{{end}}
+      </div>
+    </div>
+  </div>
 
   {{if .InvoicePeriod}}<div class="subject">{{.InvoicePeriod}}</div>{{end}}
 
-  <table class="meta-table">
-    <tr>
-      <th>{{if .VendorCode}}Vendor Code{{else}}Client Code{{end}}</th>
-      <th>Invoice No</th>
-      <th>Date Prepared</th>
-      <th>Currency</th>
-    </tr>
-    <tr>
-      <td>{{.VendorCode}}{{.Client.Code}}</td>
-      <td>{{.InvoiceNo}}</td>
-      <td>{{date .InvoiceDate}}</td>
-      <td>{{.Currency}}</td>
-    </tr>
-  </table>
+  <div class="meta-strip">
+    <div class="cell"><span class="k">{{if .VendorCode}}Vendor Code{{else}}Client Code{{end}}</span><span class="v">{{.VendorCode}}{{.Client.Code}}</span></div>
+    <div class="cell"><span class="k">Invoice No</span><span class="v">{{.InvoiceNo}}</span></div>
+    <div class="cell"><span class="k">Date Prepared</span><span class="v">{{date .InvoiceDate}}</span></div>
+    <div class="cell"><span class="k">Currency</span><span class="v">{{.Currency}}</span></div>
+  </div>
 
   {{range .Sections}}
   <table class="items-table">
@@ -111,42 +249,43 @@
         <td>{{.Description}}</td>
         <td class="num">{{qty .Quantity}}</td>
         <td class="num">{{if .Rate}}{{money .Rate}}{{end}}</td>
-        <td class="num">{{money .Amount}}</td>
+        <td class="num amount">{{money .Amount}}</td>
       </tr>
       {{end}}
     </tbody>
   </table>
   {{end}}
 
-  <table class="totals-table">
-    <tr><td class="label">Total (Excl)</td><td class="num">{{money .Subtotal}}</td></tr>
-    <tr><td class="label">VAT {{.VATRate}}%</td><td class="num">{{money .VATAmount}}</td></tr>
-    <tr><td class="label">Grand Total</td><td class="num">{{money .GrandTotal}}</td></tr>
-  </table>
+  <div class="summary">
+    <div class="row"><span>Total (Excl)</span><span class="num">{{money .Subtotal}}</span></div>
+    <div class="row discount"><span>Discount</span><span class="num">&minus;{{money .DiscountAmount}}</span></div>
+    <div class="row"><span>VAT {{.VATRate}}%</span><span class="num">{{money .VATAmount}}</span></div>
+    <div class="row total"><span>Grand Total</span><span class="num">{{money .GrandTotal}}</span></div>
+  </div>
 
   <div class="pls-pay">PLS PAY: {{.AmountInWords}}</div>
 
-  <table class="bottom-table">
-    <tr>
-      <td>
-        <div class="row"><strong>Bank Details</strong></div>
-        Bank Name: {{.Bank.BankName}}<br>
-        Account No: {{.Bank.AccountNumber}}<br>
-        SWIFT Code: {{.Bank.SwiftCode}}<br>
-        Correspondence Bank: {{.Bank.CorrespondentBank}}<br>
-        Account No: {{.Bank.CorrespondentAccountNumber}}
-      </td>
-      <td>
-        <div class="row"><strong>Prepared by:</strong></div>
-        Name: {{.PreparedBy.Name}}
-        <div class="sig-line">Signature</div>
-        <div class="row" style="margin-top:14px;"><strong>Client Representative:</strong></div>
-        Name:
-        <div class="sig-line">Signature</div>
-      </td>
-    </tr>
-  </table>
-</div>
+  <div class="bottom-row">
+    <div class="bottom-card bank">
+      <div class="heading">Bank Details</div>
+      <div class="kv"><span class="k">Bank Name</span><span class="v">{{.Bank.BankName}}</span></div>
+      <div class="kv"><span class="k">Account No.</span><span class="v">{{.Bank.AccountNumber}}</span></div>
+      <div class="kv"><span class="k">SWIFT Code</span><span class="v">{{.Bank.SwiftCode}}</span></div>
+      <div class="kv"><span class="k">Correspondent Bank</span><span class="v">{{.Bank.CorrespondentBank}}</span></div>
+      <div class="kv"><span class="k">Correspondent A/C</span><span class="v">{{.Bank.CorrespondentAccountNumber}}</span></div>
+    </div>
+    <div class="bottom-card signatures">
+      <div class="heading">Signatures</div>
+      <div class="sig-block">
+        <div class="sig-line">Prepared by &mdash; {{.PreparedBy.Name}}</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line">Client Representative</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">{{.Company.Name}} &middot; {{.Company.Website}} &middot; {{.Company.Email}}</div>
 </body>
 </html>
 {{end}}

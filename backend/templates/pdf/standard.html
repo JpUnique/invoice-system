@@ -4,93 +4,237 @@
 <head>
 <meta charset="utf-8">
 <style>
+  :root {
+    --red: #d81f27;
+    --red-tint: #fdf1f1;
+    --green: #1a8a3a;
+    --green-tint: #f0f9f2;
+    --ink: #18181b;
+    --muted: #71717a;
+    --line: #e4e4e7;
+    --panel: #fafafa;
+    --card-shadow: 0 1px 2px rgba(24, 24, 27, 0.05), 0 1px 6px rgba(24, 24, 27, 0.04);
+  }
   * { box-sizing: border-box; }
   body {
     font-family: "Helvetica Neue", Arial, sans-serif;
     font-size: 11px;
-    color: #1a1a1a;
+    line-height: 1.5;
+    color: var(--ink);
+    background: #fcfcfb;
     margin: 0;
-    padding: 0 8px;
+    padding: 0;
   }
-  .logo-wrap { text-align: center; margin-bottom: 6px; }
-  .logo-wrap img { height: 95px; }
+  .accent-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--red) 50%, var(--green) 50%, var(--green) 100%);
+    margin-bottom: 18px;
+  }
   h1.title {
     text-align: center;
-    color: #1f5fa8;
-    font-size: 18px;
-    letter-spacing: 2px;
-    margin: 0 0 10px 0;
+    color: var(--red);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    margin: 0 0 16px 0;
   }
   table { width: 100%; border-collapse: collapse; }
-  .meta-table td { border: 1px solid #999; padding: 3px 8px; }
-  .meta-table td:first-child { font-weight: bold; width: 30%; background: #f4f6f8; }
-  .party-table { margin-top: 8px; }
-  .party-table td {
-    border: 1px solid #999;
-    vertical-align: top;
-    padding: 6px 8px;
-    width: 50%;
+
+  .meta-strip {
+    display: flex;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    margin-bottom: 14px;
   }
-  .party-table .label { font-weight: bold; margin-bottom: 4px; }
+  .meta-strip .cell {
+    flex: 1;
+    padding: 8px 12px;
+    border-right: 1px solid var(--line);
+  }
+  .meta-strip .cell:last-child { border-right: none; }
+  .meta-strip .cell .k {
+    display: block;
+    font-size: 8.5px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+  .meta-strip .cell .v { font-weight: 600; }
+
+  .party-row { display: flex; gap: 14px; margin-bottom: 16px; }
+  .party-card {
+    flex: 1;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 13px 15px;
+  }
+  .party-card.client { border-left: 3px solid var(--green); }
+  .party-card.company { border-left: 3px solid var(--red); }
+  .party-card .party-logo { height: 42px; margin-bottom: 8px; display: block; }
+  .party-card .label {
+    font-size: 8.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  .party-card.client .label { color: var(--green); }
+  .party-card.company .label { color: var(--red); }
+  .party-card .name { font-weight: 700; margin-bottom: 2px; }
+  .party-card .muted { color: var(--muted); }
+
   .section-title {
-    color: #1f5fa8;
-    font-weight: bold;
-    font-size: 12px;
-    margin: 10px 0 3px 0;
+    color: var(--red);
+    font-weight: 700;
+    font-size: 11.5px;
+    margin: 16px 0 6px 0;
+    padding-left: 8px;
+    border-left: 3px solid var(--red);
   }
-  .items-table th, .items-table td {
-    border: 1px solid #999;
-    padding: 4px 6px;
+  .items-table {
+    margin-bottom: 4px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+  }
+  .items-table th {
+    background: var(--red-tint);
+    color: var(--ink);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
     text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
   }
-  .items-table th { background: #f4f6f8; }
+  .items-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .items-table tbody tr:last-child td { border-bottom: none; }
   .items-table td.num, .items-table th.num { text-align: right; }
-  .summary-table { margin-top: 8px; }
-  .summary-table td { border: 1px solid #999; padding: 3px 8px; }
-  .summary-table td:first-child { font-weight: bold; width: 70%; background: #f4f6f8; }
-  .summary-table td.num { text-align: right; }
-  .summary-words td { font-style: italic; }
-  .payment-table { margin-top: 8px; }
-  .payment-table td { border: 1px solid #999; padding: 3px 8px; }
-  .payment-table td:first-child { font-weight: bold; width: 30%; background: #f4f6f8; }
-  .signature { margin-top: 12px; }
-  .signature .label { font-weight: bold; }
-  .notes { margin-top: 8px; font-size: 10px; color: #333; }
+  .items-table td.amount { font-weight: 600; }
+
+  .summary {
+    margin-top: 12px;
+    margin-left: auto;
+    width: 270px;
+  }
+  .summary .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    color: var(--muted);
+  }
+  .summary .row.discount .num { color: var(--green); }
+  .summary .row.total {
+    border-top: 1.5px solid var(--ink);
+    margin-top: 4px;
+    padding-top: 7px;
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .summary .row.total .num { color: var(--red); }
+  .words {
+    margin-top: 10px;
+    padding: 9px 13px;
+    background: var(--panel);
+    border-radius: 8px;
+    border-left: 3px solid var(--green);
+    font-style: italic;
+    color: var(--muted);
+  }
+  .words strong { color: var(--ink); font-style: normal; }
+
+  .bottom-row { display: flex; align-items: flex-start; gap: 14px; margin-top: 18px; }
+  .bottom-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    padding: 11px 15px;
+  }
+  .bottom-card.bank { flex: 1.5; }
+  .bottom-card.signature { flex: 1; }
+  .bottom-card .heading {
+    font-size: 8.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .bottom-card .kv { display: flex; justify-content: space-between; padding: 2px 0; }
+  .bottom-card .kv .k { color: var(--muted); }
+  .bottom-card .kv .v { font-weight: 600; text-align: right; }
+
+  .signature .sig-line {
+    width: 100%;
+    border-top: 1px solid var(--ink);
+    margin-top: 24px;
+    padding-top: 4px;
+  }
+  .signature .name { font-weight: 700; }
+  .signature .role { color: var(--muted); font-size: 10px; }
+
+  .notes { margin-top: 12px; font-size: 10px; color: var(--muted); }
+  .notes strong { color: var(--ink); }
   .notes ul { margin: 4px 0 0 16px; padding: 0; }
+
+  .footer {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.2px;
+  }
 </style>
 </head>
 <body>
-  <div class="logo-wrap"><img src="{{.Company.LogoDataURI}}" alt="PetroData"></div>
+  <div class="accent-bar"></div>
   <h1 class="title">{{if eq .Type "proforma"}}PROFORMA INVOICE{{else}}INVOICE{{end}}</h1>
 
-  <table class="meta-table">
-    <tr><td>Invoice No.</td><td>{{.InvoiceNo}}</td></tr>
-    <tr><td>Invoice Creation Date</td><td>{{date .InvoiceDate}}</td></tr>
-    <tr><td>Due Date</td><td>{{.DueDate}}</td></tr>
-    <tr><td>Currency</td><td>{{.Currency}}</td></tr>
-  </table>
+  <div class="meta-strip">
+    <div class="cell"><span class="k">Invoice No.</span><span class="v">{{.InvoiceNo}}</span></div>
+    <div class="cell"><span class="k">Date</span><span class="v">{{date .InvoiceDate}}</span></div>
+    <div class="cell"><span class="k">Due</span><span class="v">{{.DueDate}}</span></div>
+    <div class="cell"><span class="k">Currency</span><span class="v">{{.Currency}}</span></div>
+  </div>
 
-  <table class="party-table">
-    <tr>
-      <td>
-        <div class="label">FROM</div>
-        {{.Company.Name}}<br>
+  <div class="party-row">
+    <div class="party-card client">
+      {{if .Client.LogoDataURI}}<img class="party-logo" src="{{.Client.LogoDataURI}}" alt="{{.Client.Name}}">{{end}}
+      <div class="label">Bill To</div>
+      <div class="name">{{.Client.Name}}</div>
+      <div class="muted">
+        {{.Client.BillingAddress}}
+        {{if .Client.AttentionName}}<br><strong>Attention:</strong> {{.Client.AttentionName}}{{end}}
+      </div>
+    </div>
+    <div class="party-card company">
+      <img class="party-logo" src="{{.Company.LogoDataURI}}" alt="PetroData">
+      <div class="label">From</div>
+      <div class="name">{{.Company.Name}}</div>
+      <div class="muted">
         {{.Company.AddressLine1}}<br>
         {{.Company.AddressLine2}}<br>
-        Telephone: {{.Company.Phone}}<br>
-        Email: {{.Company.Email}}<br>
-        Website: {{.Company.Website}}<br>
-        TIN: {{.Company.TIN}}<br>
-        RC Number: {{.Company.RCNumber}}
-      </td>
-      <td>
-        <div class="label">BILL TO</div>
-        {{.Client.Name}}<br>
-        {{.Client.BillingAddress}}<br>
-        {{if .Client.AttentionName}}<br><strong>Attention:</strong> {{.Client.AttentionName}}{{end}}
-      </td>
-    </tr>
-  </table>
+        Tel: {{.Company.Phone}} &middot; {{.Company.Email}}<br>
+        TIN: {{.Company.TIN}} &middot; RC: {{.Company.RCNumber}}
+      </div>
+    </div>
+  </div>
 
   {{range $i, $section := .Sections}}
     {{if $section.Title}}<div class="section-title">{{$section.Title}}</div>{{end}}
@@ -109,34 +253,40 @@
           <td>{{.Description}}</td>
           <td class="num">{{qty .Quantity}}</td>
           <td class="num">{{if .Rate}}{{money .Rate}}{{end}}</td>
-          <td class="num">{{money .Amount}}</td>
+          <td class="num amount">{{money .Amount}}</td>
         </tr>
         {{end}}
       </tbody>
     </table>
   {{end}}
 
-  <table class="summary-table">
-    <tr><td>Subtotal ({{.Currency}})</td><td class="num">{{money .Subtotal}}</td></tr>
-    <tr><td>VAT ({{.VATRate}}%)</td><td class="num">{{money .VATAmount}}</td></tr>
-    <tr><td>Grand Total ({{.Currency}})</td><td class="num">{{money .GrandTotal}}</td></tr>
-    <tr class="summary-words"><td>Grand Total in Words</td><td>{{.AmountInWords}}</td></tr>
-  </table>
+  <div class="summary">
+    <div class="row"><span>Subtotal ({{.Currency}})</span><span class="num">{{money .Subtotal}}</span></div>
+    <div class="row discount"><span>Discount</span><span class="num">&minus;{{money .DiscountAmount}}</span></div>
+    <div class="row"><span>VAT ({{.VATRate}}%)</span><span class="num">{{money .VATAmount}}</span></div>
+    <div class="row total"><span>Grand Total</span><span class="num">{{money .GrandTotal}}</span></div>
+  </div>
 
-  <table class="payment-table">
-    <tr><td>Bank Name</td><td>{{.Bank.BankName}}</td></tr>
-    <tr><td>Account Name</td><td>{{.Bank.AccountName}}</td></tr>
-    <tr><td>Account Number</td><td>{{.Bank.AccountNumber}}</td></tr>
-    <tr><td>SWIFT Code</td><td>{{.Bank.SwiftCode}}</td></tr>
-    <tr><td>Correspondent Bank</td><td>{{.Bank.CorrespondentBank}}</td></tr>
-    <tr><td>Correspondent Account Number</td><td>{{.Bank.CorrespondentAccountNumber}}</td></tr>
-    <tr><td>Purpose</td><td>{{.Bank.Purpose}}</td></tr>
-  </table>
+  <div class="words"><strong>In words:</strong> {{.AmountInWords}}</div>
 
-  <div class="signature">
-    Prepared By:<br><br>
-    {{.PreparedBy.Name}}<br>
-    {{.PreparedBy.Role}}
+  <div class="bottom-row">
+    <div class="bottom-card bank">
+      <div class="heading">Bank Details</div>
+      <div class="kv"><span class="k">Bank Name</span><span class="v">{{.Bank.BankName}}</span></div>
+      <div class="kv"><span class="k">Account Name</span><span class="v">{{.Bank.AccountName}}</span></div>
+      <div class="kv"><span class="k">Account No.</span><span class="v">{{.Bank.AccountNumber}}</span></div>
+      <div class="kv"><span class="k">SWIFT Code</span><span class="v">{{.Bank.SwiftCode}}</span></div>
+      <div class="kv"><span class="k">Correspondent Bank</span><span class="v">{{.Bank.CorrespondentBank}}</span></div>
+      <div class="kv"><span class="k">Correspondent A/C</span><span class="v">{{.Bank.CorrespondentAccountNumber}}</span></div>
+      <div class="kv"><span class="k">Purpose</span><span class="v">{{.Bank.Purpose}}</span></div>
+    </div>
+    <div class="bottom-card signature">
+      <div class="heading">Prepared By</div>
+      <div class="sig-line">
+        <div class="name">{{.PreparedBy.Name}}</div>
+        <div class="role">{{.PreparedBy.Role}}</div>
+      </div>
+    </div>
   </div>
 
   {{if .Notes}}
@@ -145,6 +295,8 @@
     <ul><li>{{.Notes}}</li></ul>
   </div>
   {{end}}
+
+  <div class="footer">{{.Company.Name}} &middot; {{.Company.Website}} &middot; {{.Company.Email}}</div>
 </body>
 </html>
 {{end}}

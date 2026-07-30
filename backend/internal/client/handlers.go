@@ -97,6 +97,32 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toResponse(c))
 }
 
+type addressResponse struct {
+	ID      string `json:"id"`
+	Address string `json:"address"`
+}
+
+// ListAddresses returns previously-used billing addresses for a client, so
+// a preparer can pick one instead of retyping it (see invoice.Create, which
+// saves a new address the first time it's used).
+func (h *Handler) ListAddresses(w http.ResponseWriter, r *http.Request) {
+	id, err := db.StringToUUID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid client id")
+		return
+	}
+	addresses, err := h.Queries.ListClientAddresses(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load addresses")
+		return
+	}
+	resp := make([]addressResponse, 0, len(addresses))
+	for _, a := range addresses {
+		resp = append(resp, addressResponse{ID: db.UUIDToString(a.ID), Address: a.Address})
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid form data")

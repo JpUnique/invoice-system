@@ -98,49 +98,6 @@ func (ns NullInvoiceType) Value() (driver.Value, error) {
 	return string(ns.InvoiceType), nil
 }
 
-type TransmittalStatus string
-
-const (
-	TransmittalStatusDraft        TransmittalStatus = "draft"
-	TransmittalStatusDispatched   TransmittalStatus = "dispatched"
-	TransmittalStatusAcknowledged TransmittalStatus = "acknowledged"
-)
-
-func (e *TransmittalStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = TransmittalStatus(s)
-	case string:
-		*e = TransmittalStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for TransmittalStatus: %T", src)
-	}
-	return nil
-}
-
-type NullTransmittalStatus struct {
-	TransmittalStatus TransmittalStatus `json:"transmittal_status"`
-	Valid             bool              `json:"valid"` // Valid is true if TransmittalStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullTransmittalStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.TransmittalStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.TransmittalStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullTransmittalStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.TransmittalStatus), nil
-}
-
 type UserRole string
 
 const (
@@ -223,30 +180,39 @@ type Client struct {
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 }
 
+type ClientAddress struct {
+	ID        pgtype.UUID        `json:"id"`
+	ClientID  pgtype.UUID        `json:"client_id"`
+	Address   string             `json:"address"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Invoice struct {
-	ID               pgtype.UUID        `json:"id"`
-	InvoiceNo        string             `json:"invoice_no"`
-	Type             InvoiceType        `json:"type"`
-	ClientID         pgtype.UUID        `json:"client_id"`
-	CreatedBy        pgtype.UUID        `json:"created_by"`
-	Status           InvoiceStatus      `json:"status"`
-	Currency         string             `json:"currency"`
-	InvoiceDate      string             `json:"invoice_date"`
-	DueDate          string             `json:"due_date"`
-	ContractNo       string             `json:"contract_no"`
-	PoNumber         string             `json:"po_number"`
-	VendorCode       string             `json:"vendor_code"`
-	InvoicePeriod    string             `json:"invoice_period"`
-	Subtotal         float64            `json:"subtotal"`
-	VatRate          float64            `json:"vat_rate"`
-	VatAmount        float64            `json:"vat_amount"`
-	GrandTotal       float64            `json:"grand_total"`
-	AmountInWords    string             `json:"amount_in_words"`
-	Notes            string             `json:"notes"`
-	PreparedByUserID pgtype.UUID        `json:"prepared_by_user_id"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-	BankAccountID    pgtype.UUID        `json:"bank_account_id"`
+	ID                     pgtype.UUID        `json:"id"`
+	InvoiceNo              string             `json:"invoice_no"`
+	Type                   InvoiceType        `json:"type"`
+	ClientID               pgtype.UUID        `json:"client_id"`
+	CreatedBy              pgtype.UUID        `json:"created_by"`
+	Status                 InvoiceStatus      `json:"status"`
+	Currency               string             `json:"currency"`
+	InvoiceDate            string             `json:"invoice_date"`
+	DueDate                string             `json:"due_date"`
+	ContractNo             string             `json:"contract_no"`
+	PoNumber               string             `json:"po_number"`
+	VendorCode             string             `json:"vendor_code"`
+	InvoicePeriod          string             `json:"invoice_period"`
+	Subtotal               float64            `json:"subtotal"`
+	VatRate                float64            `json:"vat_rate"`
+	VatAmount              float64            `json:"vat_amount"`
+	GrandTotal             float64            `json:"grand_total"`
+	AmountInWords          string             `json:"amount_in_words"`
+	Notes                  string             `json:"notes"`
+	PreparedByUserID       pgtype.UUID        `json:"prepared_by_user_id"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+	BankAccountID          pgtype.UUID        `json:"bank_account_id"`
+	BillingAddressOverride string             `json:"billing_address_override"`
+	DiscountAmount         float64            `json:"discount_amount"`
 }
 
 type InvoiceLineItem struct {
@@ -271,33 +237,6 @@ type InvoiceSection struct {
 type NumberSequence struct {
 	ScopeKey  string `json:"scope_key"`
 	LastValue int32  `json:"last_value"`
-}
-
-type Transmittal struct {
-	ID               pgtype.UUID        `json:"id"`
-	TransmittalNo    string             `json:"transmittal_no"`
-	ClientID         pgtype.UUID        `json:"client_id"`
-	RelatedInvoiceID pgtype.UUID        `json:"related_invoice_id"`
-	CreatedBy        pgtype.UUID        `json:"created_by"`
-	Status           TransmittalStatus  `json:"status"`
-	TransmittalDate  string             `json:"transmittal_date"`
-	Purpose          string             `json:"purpose"`
-	ModeOfDispatch   string             `json:"mode_of_dispatch"`
-	DispatchedByName string             `json:"dispatched_by_name"`
-	ReceivedByName   string             `json:"received_by_name"`
-	Remarks          string             `json:"remarks"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-}
-
-type TransmittalItem struct {
-	ID            pgtype.UUID `json:"id"`
-	TransmittalID pgtype.UUID `json:"transmittal_id"`
-	Description   string      `json:"description"`
-	FormatMedium  string      `json:"format_medium"`
-	Quantity      float64     `json:"quantity"`
-	Remarks       string      `json:"remarks"`
-	SortOrder     int32       `json:"sort_order"`
 }
 
 type User struct {

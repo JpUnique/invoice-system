@@ -43,29 +43,35 @@ func (h *Handler) PDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	billingAddress := inv.BillingAddressOverride
+	if billingAddress == "" {
+		billingAddress = client.BillingAddress
+	}
+
 	view := pdf.InvoiceView{
-		InvoiceNo:     inv.InvoiceNo,
-		Type:          string(inv.Type),
-		Status:        string(inv.Status),
-		Currency:      inv.Currency,
-		InvoiceDate:   inv.InvoiceDate,
-		DueDate:       inv.DueDate,
-		ContractNo:    inv.ContractNo,
-		PoNumber:      inv.PoNumber,
-		VendorCode:    inv.VendorCode,
-		InvoicePeriod: inv.InvoicePeriod,
-		Subtotal:      inv.Subtotal,
-		VATRate:       inv.VatRate,
-		VATAmount:     inv.VatAmount,
-		GrandTotal:    inv.GrandTotal,
-		AmountInWords: inv.AmountInWords,
-		Notes:         inv.Notes,
-		Company:       pdf.Company,
-		Bank:          resolveBankDetails(ctx, h.Queries, inv.BankAccountID),
+		InvoiceNo:      inv.InvoiceNo,
+		Type:           string(inv.Type),
+		Status:         string(inv.Status),
+		Currency:       inv.Currency,
+		InvoiceDate:    inv.InvoiceDate,
+		DueDate:        inv.DueDate,
+		ContractNo:     inv.ContractNo,
+		PoNumber:       inv.PoNumber,
+		VendorCode:     inv.VendorCode,
+		InvoicePeriod:  inv.InvoicePeriod,
+		Subtotal:       inv.Subtotal,
+		DiscountAmount: inv.DiscountAmount,
+		VATRate:        inv.VatRate,
+		VATAmount:      inv.VatAmount,
+		GrandTotal:     inv.GrandTotal,
+		AmountInWords:  inv.AmountInWords,
+		Notes:          inv.Notes,
+		Company:        pdf.Company,
+		Bank:           resolveBankDetails(ctx, h.Queries, inv.BankAccountID),
 		Client: pdf.ClientView{
 			Name:           client.Name,
 			Code:           client.Code,
-			BillingAddress: client.BillingAddress,
+			BillingAddress: billingAddress,
 			AttentionName:  client.AttentionName,
 			ContactEmail:   client.ContactEmail,
 		},

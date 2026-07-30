@@ -16,32 +16,35 @@ const createInvoice = `-- name: CreateInvoice :one
 INSERT INTO invoices (
     invoice_no, type, client_id, created_by, currency, invoice_date, due_date,
     contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate,
-    vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, bank_account_id
+    vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, bank_account_id,
+    billing_address_override, discount_amount
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount
 `
 
 type CreateInvoiceParams struct {
-	InvoiceNo        string      `json:"invoice_no"`
-	Type             InvoiceType `json:"type"`
-	ClientID         pgtype.UUID `json:"client_id"`
-	CreatedBy        pgtype.UUID `json:"created_by"`
-	Currency         string      `json:"currency"`
-	InvoiceDate      string      `json:"invoice_date"`
-	DueDate          string      `json:"due_date"`
-	ContractNo       string      `json:"contract_no"`
-	PoNumber         string      `json:"po_number"`
-	VendorCode       string      `json:"vendor_code"`
-	InvoicePeriod    string      `json:"invoice_period"`
-	Subtotal         float64     `json:"subtotal"`
-	VatRate          float64     `json:"vat_rate"`
-	VatAmount        float64     `json:"vat_amount"`
-	GrandTotal       float64     `json:"grand_total"`
-	AmountInWords    string      `json:"amount_in_words"`
-	Notes            string      `json:"notes"`
-	PreparedByUserID pgtype.UUID `json:"prepared_by_user_id"`
-	BankAccountID    pgtype.UUID `json:"bank_account_id"`
+	InvoiceNo              string      `json:"invoice_no"`
+	Type                   InvoiceType `json:"type"`
+	ClientID               pgtype.UUID `json:"client_id"`
+	CreatedBy              pgtype.UUID `json:"created_by"`
+	Currency               string      `json:"currency"`
+	InvoiceDate            string      `json:"invoice_date"`
+	DueDate                string      `json:"due_date"`
+	ContractNo             string      `json:"contract_no"`
+	PoNumber               string      `json:"po_number"`
+	VendorCode             string      `json:"vendor_code"`
+	InvoicePeriod          string      `json:"invoice_period"`
+	Subtotal               float64     `json:"subtotal"`
+	VatRate                float64     `json:"vat_rate"`
+	VatAmount              float64     `json:"vat_amount"`
+	GrandTotal             float64     `json:"grand_total"`
+	AmountInWords          string      `json:"amount_in_words"`
+	Notes                  string      `json:"notes"`
+	PreparedByUserID       pgtype.UUID `json:"prepared_by_user_id"`
+	BankAccountID          pgtype.UUID `json:"bank_account_id"`
+	BillingAddressOverride string      `json:"billing_address_override"`
+	DiscountAmount         float64     `json:"discount_amount"`
 }
 
 func (q *Queries) CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (Invoice, error) {
@@ -65,6 +68,8 @@ func (q *Queries) CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (I
 		arg.Notes,
 		arg.PreparedByUserID,
 		arg.BankAccountID,
+		arg.BillingAddressOverride,
+		arg.DiscountAmount,
 	)
 	var i Invoice
 	err := row.Scan(
@@ -91,6 +96,8 @@ func (q *Queries) CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (I
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BankAccountID,
+		&i.BillingAddressOverride,
+		&i.DiscountAmount,
 	)
 	return i, err
 }
@@ -165,7 +172,7 @@ func (q *Queries) CreateInvoiceSection(ctx context.Context, arg CreateInvoiceSec
 }
 
 const getInvoice = `-- name: GetInvoice :one
-SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id FROM invoices WHERE id = $1
+SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount FROM invoices WHERE id = $1
 `
 
 func (q *Queries) GetInvoice(ctx context.Context, id pgtype.UUID) (Invoice, error) {
@@ -195,6 +202,8 @@ func (q *Queries) GetInvoice(ctx context.Context, id pgtype.UUID) (Invoice, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BankAccountID,
+		&i.BillingAddressOverride,
+		&i.DiscountAmount,
 	)
 	return i, err
 }
@@ -335,7 +344,7 @@ func (q *Queries) NextInvoiceNumber(ctx context.Context, scopeKey string) (int32
 const updateInvoiceStatus = `-- name: UpdateInvoiceStatus :one
 UPDATE invoices SET status = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount
 `
 
 type UpdateInvoiceStatusParams struct {
@@ -370,6 +379,8 @@ func (q *Queries) UpdateInvoiceStatus(ctx context.Context, arg UpdateInvoiceStat
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BankAccountID,
+		&i.BillingAddressOverride,
+		&i.DiscountAmount,
 	)
 	return i, err
 }

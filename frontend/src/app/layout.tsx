@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PetroData Invoice & Transmittal",
-  description: "PetroData Management Services invoice and transmittal system",
+  title: "PetroData Invoice System",
+  description: "PetroData Management Services invoice system",
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

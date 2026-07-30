@@ -49,18 +49,20 @@ type sectionRequest struct {
 }
 
 type createInvoiceRequest struct {
-	ClientID      string           `json:"client_id"`
-	Type          string           `json:"type"`
-	Currency      string           `json:"currency"`
-	InvoiceDate   string           `json:"invoice_date"`
-	DueDate       string           `json:"due_date"`
-	ContractNo    string           `json:"contract_no"`
-	PoNumber      string           `json:"po_number"`
-	VendorCode    string           `json:"vendor_code"`
-	InvoicePeriod string           `json:"invoice_period"`
-	Notes         string           `json:"notes"`
-	BankAccountID string           `json:"bank_account_id"`
-	Sections      []sectionRequest `json:"sections"`
+	ClientID       string           `json:"client_id"`
+	Type           string           `json:"type"`
+	Currency       string           `json:"currency"`
+	InvoiceDate    string           `json:"invoice_date"`
+	DueDate        string           `json:"due_date"`
+	ContractNo     string           `json:"contract_no"`
+	PoNumber       string           `json:"po_number"`
+	VendorCode     string           `json:"vendor_code"`
+	InvoicePeriod  string           `json:"invoice_period"`
+	Notes          string           `json:"notes"`
+	BankAccountID  string           `json:"bank_account_id"`
+	BillingAddress string           `json:"billing_address"`
+	DiscountAmount float64          `json:"discount_amount"`
+	Sections       []sectionRequest `json:"sections"`
 }
 
 type lineItemResponse struct {
@@ -80,27 +82,29 @@ type sectionResponse struct {
 }
 
 type invoiceResponse struct {
-	ID            string            `json:"id"`
-	InvoiceNo     string            `json:"invoice_no"`
-	Type          string            `json:"type"`
-	Status        string            `json:"status"`
-	ClientID      string            `json:"client_id"`
-	Currency      string            `json:"currency"`
-	InvoiceDate   string            `json:"invoice_date"`
-	DueDate       string            `json:"due_date"`
-	ContractNo    string            `json:"contract_no"`
-	PoNumber      string            `json:"po_number"`
-	VendorCode    string            `json:"vendor_code"`
-	InvoicePeriod string            `json:"invoice_period"`
-	Subtotal      float64           `json:"subtotal"`
-	VatRate       float64           `json:"vat_rate"`
-	VatAmount     float64           `json:"vat_amount"`
-	GrandTotal    float64           `json:"grand_total"`
-	AmountInWords string            `json:"amount_in_words"`
-	Notes         string            `json:"notes"`
-	BankAccountID string            `json:"bank_account_id,omitempty"`
-	CreatedAt     string            `json:"created_at"`
-	Sections      []sectionResponse `json:"sections,omitempty"`
+	ID             string            `json:"id"`
+	InvoiceNo      string            `json:"invoice_no"`
+	Type           string            `json:"type"`
+	Status         string            `json:"status"`
+	ClientID       string            `json:"client_id"`
+	Currency       string            `json:"currency"`
+	InvoiceDate    string            `json:"invoice_date"`
+	DueDate        string            `json:"due_date"`
+	ContractNo     string            `json:"contract_no"`
+	PoNumber       string            `json:"po_number"`
+	VendorCode     string            `json:"vendor_code"`
+	InvoicePeriod  string            `json:"invoice_period"`
+	Subtotal       float64           `json:"subtotal"`
+	DiscountAmount float64           `json:"discount_amount"`
+	VatRate        float64           `json:"vat_rate"`
+	VatAmount      float64           `json:"vat_amount"`
+	GrandTotal     float64           `json:"grand_total"`
+	AmountInWords  string            `json:"amount_in_words"`
+	Notes          string            `json:"notes"`
+	BankAccountID  string            `json:"bank_account_id,omitempty"`
+	BillingAddress string            `json:"billing_address"`
+	CreatedAt      string            `json:"created_at"`
+	Sections       []sectionResponse `json:"sections,omitempty"`
 }
 
 type listRow struct {
@@ -243,8 +247,17 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	subtotal = round2(subtotal)
-	vatAmount := round2(subtotal * defaultVATRate / 100)
-	grandTotal := round2(subtotal + vatAmount)
+
+	discount := round2(req.DiscountAmount)
+	if discount < 0 {
+		discount = 0
+	}
+	if discount > subtotal {
+		discount = subtotal
+	}
+	netSubtotal := round2(subtotal - discount)
+	vatAmount := round2(netSubtotal * defaultVATRate / 100)
+	grandTotal := round2(netSubtotal + vatAmount)
 	amountInWords := AmountInWords(grandTotal, currency)
 
 	year := time.Now().Year()
@@ -287,29 +300,43 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	inv, err := qtx.CreateInvoice(ctx, sqlc.CreateInvoiceParams{
-		InvoiceNo:        invoiceNo,
-		Type:             invoiceType,
-		ClientID:         clientID,
-		CreatedBy:        createdByID,
-		Currency:         currency,
-		InvoiceDate:      req.InvoiceDate,
-		DueDate:          req.DueDate,
-		ContractNo:       req.ContractNo,
-		PoNumber:         req.PoNumber,
-		VendorCode:       req.VendorCode,
-		InvoicePeriod:    req.InvoicePeriod,
-		Subtotal:         subtotal,
-		VatRate:          defaultVATRate,
-		VatAmount:        vatAmount,
-		GrandTotal:       grandTotal,
-		AmountInWords:    amountInWords,
-		Notes:            req.Notes,
-		PreparedByUserID: createdByID,
-		BankAccountID:    bankAccountID,
+		InvoiceNo:              invoiceNo,
+		Type:                   invoiceType,
+		ClientID:               clientID,
+		CreatedBy:              createdByID,
+		Currency:               currency,
+		InvoiceDate:            req.InvoiceDate,
+		DueDate:                req.DueDate,
+		ContractNo:             req.ContractNo,
+		PoNumber:               req.PoNumber,
+		VendorCode:             req.VendorCode,
+		InvoicePeriod:          req.InvoicePeriod,
+		Subtotal:               subtotal,
+		DiscountAmount:         discount,
+		VatRate:                defaultVATRate,
+		VatAmount:              vatAmount,
+		GrandTotal:             grandTotal,
+		AmountInWords:          amountInWords,
+		Notes:                  req.Notes,
+		PreparedByUserID:       createdByID,
+		BankAccountID:          bankAccountID,
+		BillingAddressOverride: req.BillingAddress,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not create invoice")
 		return
+	}
+
+	// Remember this address for the client so it shows up as a dropdown
+	// option next time, instead of being retyped from scratch.
+	if req.BillingAddress != "" {
+		if _, err := qtx.SaveClientAddress(ctx, sqlc.SaveClientAddressParams{
+			ClientID: clientID,
+			Address:  req.BillingAddress,
+		}); err != nil {
+			writeError(w, http.StatusInternalServerError, "could not save billing address")
+			return
+		}
 	}
 
 	resp := toInvoiceResponse(inv)
@@ -422,25 +449,27 @@ func (h *Handler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 
 func toInvoiceResponse(inv sqlc.Invoice) invoiceResponse {
 	resp := invoiceResponse{
-		ID:            db.UUIDToString(inv.ID),
-		InvoiceNo:     inv.InvoiceNo,
-		Type:          string(inv.Type),
-		Status:        string(inv.Status),
-		ClientID:      db.UUIDToString(inv.ClientID),
-		Currency:      inv.Currency,
-		InvoiceDate:   inv.InvoiceDate,
-		DueDate:       inv.DueDate,
-		ContractNo:    inv.ContractNo,
-		PoNumber:      inv.PoNumber,
-		VendorCode:    inv.VendorCode,
-		InvoicePeriod: inv.InvoicePeriod,
-		Subtotal:      inv.Subtotal,
-		VatRate:       inv.VatRate,
-		VatAmount:     inv.VatAmount,
-		GrandTotal:    inv.GrandTotal,
-		AmountInWords: inv.AmountInWords,
-		Notes:         inv.Notes,
-		CreatedAt:     inv.CreatedAt.Time.Format(time.RFC3339),
+		ID:             db.UUIDToString(inv.ID),
+		InvoiceNo:      inv.InvoiceNo,
+		Type:           string(inv.Type),
+		Status:         string(inv.Status),
+		ClientID:       db.UUIDToString(inv.ClientID),
+		Currency:       inv.Currency,
+		InvoiceDate:    inv.InvoiceDate,
+		DueDate:        inv.DueDate,
+		ContractNo:     inv.ContractNo,
+		PoNumber:       inv.PoNumber,
+		VendorCode:     inv.VendorCode,
+		InvoicePeriod:  inv.InvoicePeriod,
+		Subtotal:       inv.Subtotal,
+		DiscountAmount: inv.DiscountAmount,
+		VatRate:        inv.VatRate,
+		VatAmount:      inv.VatAmount,
+		GrandTotal:     inv.GrandTotal,
+		AmountInWords:  inv.AmountInWords,
+		Notes:          inv.Notes,
+		BillingAddress: inv.BillingAddressOverride,
+		CreatedAt:      inv.CreatedAt.Time.Format(time.RFC3339),
 	}
 	if inv.BankAccountID.Valid {
 		resp.BankAccountID = db.UUIDToString(inv.BankAccountID)

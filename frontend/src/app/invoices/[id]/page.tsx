@@ -2,17 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import { Protected } from "@/components/protected";
-import { Nav } from "@/components/nav";
+import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, Invoice } from "@/lib/api";
 import { formatMoney, formatDate } from "@/lib/format";
+import { statusTone } from "@/lib/status";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { PageLoading } from "@/components/ui/spinner";
 
 export default function InvoiceDetailPage() {
   return (
     <Protected>
-      <Nav />
-      <InvoiceDetailContent />
+      <AppShell>
+        <InvoiceDetailContent />
+      </AppShell>
     </Protected>
   );
 }
@@ -77,42 +87,48 @@ function InvoiceDetailContent() {
 
   if (error) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          {error}
-        </p>
+      <main className="mx-auto w-full max-w-3xl p-8">
+        <Alert>{error}</Alert>
       </main>
     );
   }
 
   if (!invoice) {
-    return <main className="p-6 text-zinc-500">Loading...</main>;
+    return <PageLoading />;
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-6">
-      <div className="flex items-start justify-between">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-8">
+      <Link
+        href="/invoices"
+        className="flex w-fit items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-800 dark:hover:text-zinc-200"
+      >
+        <ArrowLeft size={14} /> Invoices
+      </Link>
+
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             {invoice.invoice_no}
           </h1>
-          <div className="flex items-center gap-2 text-sm capitalize text-zinc-500">
-            <span>{invoice.type} invoice &middot;</span>
+          <div className="mt-1.5 flex items-center gap-2 text-sm capitalize text-zinc-500">
+            <span>{invoice.type} invoice</span>
+            <span className="text-zinc-300">&middot;</span>
             {canChangeStatus ? (
-              <select
+              <Select
                 value={invoice.status}
                 disabled={updatingStatus}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="rounded border border-zinc-300 bg-transparent px-2 py-0.5 text-sm capitalize dark:border-zinc-700"
+                className="w-auto py-1 text-xs capitalize"
               >
                 {INVOICE_STATUSES.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
-              <span>{invoice.status}</span>
+              <Badge tone={statusTone(invoice.status)}>{invoice.status}</Badge>
             )}
           </div>
         </div>
@@ -122,67 +138,69 @@ function InvoiceDetailContent() {
             <p>Due: {invoice.due_date || "—"}</p>
             {invoice.contract_no && <p>Contract: {invoice.contract_no}</p>}
           </div>
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="rounded bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-          >
+          <Button onClick={handleDownload} disabled={downloading}>
+            {downloading ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Download size={15} />
+            )}
             {downloading ? "Generating..." : "Download PDF"}
-          </button>
+          </Button>
         </div>
       </div>
 
       {invoice.sections.map((section) => (
-        <div
-          key={section.id}
-          className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800"
-        >
+        <Card key={section.id} className="overflow-hidden">
           {section.title && (
-            <div className="bg-zinc-50 px-4 py-2 text-sm font-medium text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+            <div className="border-b border-zinc-100 bg-zinc-50 px-5 py-2.5 text-sm font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
               {section.title}
             </div>
           )}
           <table className="w-full text-left text-sm">
-            <thead className="text-zinc-500 dark:text-zinc-400">
+            <thead className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               <tr>
-                <th className="px-4 py-2">Description</th>
-                <th className="px-4 py-2 text-right">Qty</th>
-                <th className="px-4 py-2 text-right">Rate</th>
-                <th className="px-4 py-2 text-right">Amount</th>
+                <th className="px-5 py-2.5 font-medium">Description</th>
+                <th className="px-5 py-2.5 text-right font-medium">Qty</th>
+                <th className="px-5 py-2.5 text-right font-medium">Rate</th>
+                <th className="px-5 py-2.5 text-right font-medium">Amount</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {section.line_items.map((li) => (
-                <tr key={li.id} className="border-t border-zinc-100 dark:border-zinc-800">
-                  <td className="px-4 py-2 text-zinc-900 dark:text-zinc-50">
+                <tr key={li.id}>
+                  <td className="px-5 py-2.5 text-zinc-900 dark:text-zinc-50">
                     {li.description}
                   </td>
-                  <td className="px-4 py-2 text-right text-zinc-500">
+                  <td className="px-5 py-2.5 text-right text-zinc-500">
                     {li.quantity ? li.quantity : ""}
                   </td>
-                  <td className="px-4 py-2 text-right text-zinc-500">
+                  <td className="px-5 py-2.5 text-right text-zinc-500">
                     {li.rate ? formatMoney(li.rate, invoice.currency) : ""}
                   </td>
-                  <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-50">
+                  <td className="px-5 py-2.5 text-right font-medium text-zinc-900 dark:text-zinc-50">
                     {formatMoney(li.amount, invoice.currency)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       ))}
 
-      <div className="ml-auto flex w-64 flex-col gap-1 text-sm">
+      <div className="ml-auto flex w-72 flex-col gap-1.5 text-sm">
         <div className="flex justify-between text-zinc-500">
           <span>Subtotal</span>
           <span>{formatMoney(invoice.subtotal, invoice.currency)}</span>
         </div>
         <div className="flex justify-between text-zinc-500">
+          <span>Discount</span>
+          <span>&minus;{formatMoney(invoice.discount_amount, invoice.currency)}</span>
+        </div>
+        <div className="flex justify-between text-zinc-500">
           <span>VAT ({invoice.vat_rate}%)</span>
           <span>{formatMoney(invoice.vat_amount, invoice.currency)}</span>
         </div>
-        <div className="flex justify-between border-t border-zinc-200 pt-1 text-base font-semibold text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
+        <div className="flex justify-between border-t border-zinc-200 pt-1.5 text-base font-semibold text-zinc-900 dark:border-zinc-800 dark:text-zinc-50">
           <span>Grand Total</span>
           <span>{formatMoney(invoice.grand_total, invoice.currency)}</span>
         </div>
@@ -191,9 +209,9 @@ function InvoiceDetailContent() {
       <p className="text-sm italic text-zinc-500">{invoice.amount_in_words}</p>
 
       {invoice.notes && (
-        <p className="rounded bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-          {invoice.notes}
-        </p>
+        <Card className="px-4 py-3">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{invoice.notes}</p>
+        </Card>
       )}
     </main>
   );

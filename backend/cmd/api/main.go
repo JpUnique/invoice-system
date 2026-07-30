@@ -24,19 +24,23 @@ import (
 	"github.com/petrodata/invoice-transmittal/internal/invoice"
 	"github.com/petrodata/invoice-transmittal/internal/pdf"
 	"github.com/petrodata/invoice-transmittal/internal/storage"
-	"github.com/petrodata/invoice-transmittal/internal/transmittal"
 )
 
 func main() {
 	_ = godotenv.Load()
 	cfg := config.Load()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
+	// Retries internally for up to the context deadline above (e.g. while
+	// postgres is still recovering from an ungraceful restart). If it's
+	// still unreachable after that, fail hard rather than serve requests
+	// against a nil pool forever — `restart: unless-stopped` will keep
+	// retrying the whole process until the database comes back.
 	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Printf("warning: could not connect to database yet: %v", err)
+		log.Fatalf("could not connect to database: %v", err)
 	}
 
 	store, err := storage.New(cfg.UploadsDir)
@@ -44,10 +48,7 @@ func main() {
 		log.Fatalf("could not initialize uploads storage: %v", err)
 	}
 
-	var queries *sqlc.Queries
-	if pool != nil {
-		queries = sqlc.New(pool)
-	}
+	queries := sqlc.New(pool)
 
 	pdfRenderer, err := pdf.NewRenderer(cfg.TemplatesDir)
 	if err != nil {
@@ -63,7 +64,6 @@ func main() {
 	authHandler := auth.NewHandler(queries, cfg.JWTSecret)
 	clientHandler := client.NewHandler(queries, store)
 	invoiceHandler := invoice.NewHandler(pool, queries, store, pdfRenderer, browser)
-	transmittalHandler := transmittal.NewHandler(pool, queries, pdfRenderer, browser)
 	dashboardHandler := dashboard.NewHandler(queries)
 	auditHandler := audit.NewHandler(queries)
 	bankAccountHandler := bankaccount.NewHandler(queries)
@@ -92,6 +92,7 @@ func main() {
 
 			r.Get("/clients", clientHandler.List)
 			r.Get("/clients/{id}", clientHandler.Get)
+			r.Get("/clients/{id}/addresses", clientHandler.ListAddresses)
 
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireRole("admin", "gm"))
@@ -105,11 +106,6 @@ func main() {
 			r.Post("/invoices", invoiceHandler.Create)
 			r.Get("/invoices/{id}/pdf", invoiceHandler.PDF)
 
-			r.Get("/transmittals", transmittalHandler.List)
-			r.Get("/transmittals/{id}", transmittalHandler.Get)
-			r.Post("/transmittals", transmittalHandler.Create)
-			r.Get("/transmittals/{id}/pdf", transmittalHandler.PDF)
-
 			r.Get("/dashboard/summary", dashboardHandler.Summary)
 
 			r.Get("/bank-accounts", bankAccountHandler.List)
@@ -117,7 +113,6 @@ func main() {
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireRole("admin", "gm"))
 				r.Patch("/invoices/{id}/status", invoiceHandler.UpdateStatus)
-				r.Patch("/transmittals/{id}/status", transmittalHandler.UpdateStatus)
 				r.Post("/bank-accounts", bankAccountHandler.Create)
 				r.Put("/bank-accounts/{id}", bankAccountHandler.Update)
 				r.Delete("/bank-accounts/{id}", bankAccountHandler.Delete)

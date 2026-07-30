@@ -1,16 +1,26 @@
 "use client";
 
 import { useEffect, useState, FormEvent } from "react";
+import { Landmark, Plus, Trash2, X } from "lucide-react";
 import { Protected } from "@/components/protected";
-import { Nav } from "@/components/nav";
+import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, BankAccount } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input, Label } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageLoading } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function BankAccountsPage() {
   return (
     <Protected>
-      <Nav />
-      <BankAccountsContent />
+      <AppShell>
+        <BankAccountsContent />
+      </AppShell>
     </Protected>
   );
 }
@@ -59,10 +69,8 @@ function BankAccountsContent() {
 
   if (user && user.role !== "admin") {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          Only administrators can manage bank accounts.
-        </p>
+      <main className="mx-auto w-full max-w-3xl p-8">
+        <Alert>Only administrators can manage bank accounts.</Alert>
       </main>
     );
   }
@@ -96,122 +104,145 @@ function BankAccountsContent() {
   }
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Bank Accounts
-        </h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          {showForm ? "Cancel" : "New Bank Account"}
-        </button>
-      </div>
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-8">
+      <PageHeader
+        title="Bank Accounts"
+        description="Scoped per currency. Invoices auto-select the default account for their currency."
+        actions={
+          <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? "secondary" : "primary"}>
+            {showForm ? (
+              <>
+                <X size={15} /> Cancel
+              </>
+            ) : (
+              <>
+                <Plus size={15} /> New Bank Account
+              </>
+            )}
+          </Button>
+        }
+      />
 
-      {error && (
-        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <Alert>{error}</Alert>}
 
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="grid grid-cols-1 gap-3 rounded-lg border border-zinc-200 p-4 sm:grid-cols-2 dark:border-zinc-800"
-        >
-          <Field label="Bank Name" value={form.bank_name} onChange={(v) => setForm({ ...form, bank_name: v })} required />
-          <Field label="Account Name" value={form.account_name} onChange={(v) => setForm({ ...form, account_name: v })} required />
-          <Field label="Account Number" value={form.account_number} onChange={(v) => setForm({ ...form, account_number: v })} required />
-          <Field label="SWIFT Code" value={form.swift_code} onChange={(v) => setForm({ ...form, swift_code: v })} />
-          <Field label="Correspondent Bank" value={form.correspondent_bank} onChange={(v) => setForm({ ...form, correspondent_bank: v })} />
-          <Field label="Correspondent Account No." value={form.correspondent_account_number} onChange={(v) => setForm({ ...form, correspondent_account_number: v })} />
-          <Field label="Currency" value={form.currency} onChange={(v) => setForm({ ...form, currency: v.toUpperCase() })} placeholder="USD" required />
-          <label className="flex items-center gap-2 self-end pb-2 text-sm text-zinc-700 dark:text-zinc-300">
-            <input
-              type="checkbox"
-              checked={form.is_default}
-              onChange={(e) => setForm({ ...form, is_default: e.target.checked })}
-            />
-            Default for this currency
-          </label>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="col-span-full mt-2 rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            {submitting ? "Saving..." : "Save bank account"}
-          </button>
-        </form>
+        <Card>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            <Label>
+              Bank Name
+              <Input
+                value={form.bank_name}
+                onChange={(e) => setForm({ ...form, bank_name: e.target.value })}
+                required
+              />
+            </Label>
+            <Label>
+              Account Name
+              <Input
+                value={form.account_name}
+                onChange={(e) => setForm({ ...form, account_name: e.target.value })}
+                required
+              />
+            </Label>
+            <Label>
+              Account Number
+              <Input
+                value={form.account_number}
+                onChange={(e) => setForm({ ...form, account_number: e.target.value })}
+                required
+              />
+            </Label>
+            <Label>
+              SWIFT Code
+              <Input
+                value={form.swift_code}
+                onChange={(e) => setForm({ ...form, swift_code: e.target.value })}
+              />
+            </Label>
+            <Label>
+              Correspondent Bank
+              <Input
+                value={form.correspondent_bank}
+                onChange={(e) => setForm({ ...form, correspondent_bank: e.target.value })}
+              />
+            </Label>
+            <Label>
+              Correspondent Account No.
+              <Input
+                value={form.correspondent_account_number}
+                onChange={(e) =>
+                  setForm({ ...form, correspondent_account_number: e.target.value })
+                }
+              />
+            </Label>
+            <Label>
+              Currency
+              <Input
+                value={form.currency}
+                onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })}
+                placeholder="USD"
+                required
+              />
+            </Label>
+            <label className="flex items-center gap-2 self-end pb-2.5 text-sm text-zinc-700 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={form.is_default}
+                onChange={(e) => setForm({ ...form, is_default: e.target.checked })}
+                className="h-4 w-4 rounded border-zinc-300 text-primary-600 focus:ring-primary-500"
+              />
+              Default for this currency
+            </label>
+            <div className="col-span-full flex justify-end">
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Saving..." : "Save bank account"}
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
 
       {loading ? (
-        <p className="text-zinc-500">Loading...</p>
+        <PageLoading />
       ) : accounts.length === 0 ? (
-        <p className="text-zinc-500">No bank accounts yet.</p>
+        <EmptyState icon={Landmark} title="No bank accounts yet" />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <Card className="overflow-hidden">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+            <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
               <tr>
-                <th className="px-4 py-2">Bank</th>
-                <th className="px-4 py-2">Account No.</th>
-                <th className="px-4 py-2">Currency</th>
-                <th className="px-4 py-2">Default</th>
-                <th className="px-4 py-2" />
+                <th className="px-5 py-3 font-medium">Bank</th>
+                <th className="px-5 py-3 font-medium">Account No.</th>
+                <th className="px-5 py-3 font-medium">Currency</th>
+                <th className="px-5 py-3 font-medium">Default</th>
+                <th className="px-5 py-3" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {accounts.map((a) => (
-                <tr key={a.id} className="border-t border-zinc-100 dark:border-zinc-800">
-                  <td className="px-4 py-2 text-zinc-900 dark:text-zinc-50">
-                    {a.bank_name}
+                <tr key={a.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                  <td className="px-5 py-3">
+                    <p className="font-medium text-zinc-900 dark:text-zinc-50">{a.bank_name}</p>
                     <p className="text-xs text-zinc-500">{a.account_name}</p>
                   </td>
-                  <td className="px-4 py-2 text-zinc-500">{a.account_number}</td>
-                  <td className="px-4 py-2 text-zinc-500">{a.currency}</td>
-                  <td className="px-4 py-2 text-zinc-500">{a.is_default ? "Yes" : ""}</td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-5 py-3 text-zinc-500">{a.account_number}</td>
+                  <td className="px-5 py-3 text-zinc-500">{a.currency}</td>
+                  <td className="px-5 py-3">{a.is_default && <Badge tone="green">Default</Badge>}</td>
+                  <td className="px-5 py-3 text-right">
                     <button
                       onClick={() => handleDelete(a.id)}
-                      className="text-xs text-red-600 hover:underline dark:text-red-400"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
+                      title="Delete"
                     >
-                      Delete
+                      <Trash2 size={14} />
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </main>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  required,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  required?: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
-      {label}
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        placeholder={placeholder}
-        className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-      />
-    </label>
   );
 }

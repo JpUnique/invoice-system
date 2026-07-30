@@ -2,17 +2,48 @@
 
 import { useEffect, useState, FormEvent } from "react";
 import Image from "next/image";
+import { Building2, Plus, X } from "lucide-react";
 import { Protected } from "@/components/protected";
-import { Nav } from "@/components/nav";
+import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, Client, API_URL } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input, Label, Textarea } from "@/components/ui/input";
+import { Alert } from "@/components/ui/alert";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageLoading } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function ClientsPage() {
   return (
     <Protected>
-      <Nav />
-      <ClientsContent />
+      <AppShell>
+        <ClientsContent />
+      </AppShell>
     </Protected>
+  );
+}
+
+function ClientLogo({ client }: { client: Client }) {
+  if (client.logo_url) {
+    return (
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-700">
+        <Image
+          src={`${API_URL}${client.logo_url}`}
+          alt={client.name}
+          width={36}
+          height={36}
+          className="h-full w-full object-contain p-1"
+          unoptimized
+        />
+      </div>
+    );
+  }
+  return (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-400 dark:bg-zinc-800">
+      <Building2 size={16} strokeWidth={2} />
+    </div>
   );
 }
 
@@ -44,18 +75,24 @@ function ClientsContent() {
   }, [token]);
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-          Clients
-        </h1>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          {showForm ? "Cancel" : "New Client"}
-        </button>
-      </div>
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-8">
+      <PageHeader
+        title="Clients"
+        description="Companies you invoice, with their branding for co-branded proforma invoices."
+        actions={
+          <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? "secondary" : "primary"}>
+            {showForm ? (
+              <>
+                <X size={15} /> Cancel
+              </>
+            ) : (
+              <>
+                <Plus size={15} /> New Client
+              </>
+            )}
+          </Button>
+        }
+      />
 
       {showForm && (
         <NewClientForm
@@ -67,54 +104,53 @@ function ClientsContent() {
         />
       )}
 
-      {error && (
-        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <Alert>{error}</Alert>}
 
       {loading ? (
-        <p className="text-zinc-500">Loading...</p>
+        <PageLoading />
       ) : clients.length === 0 ? (
-        <p className="text-zinc-500">No clients yet.</p>
+        <EmptyState
+          icon={Building2}
+          title="No clients yet"
+          description="Add your first client to start creating invoices for them."
+          action={
+            !showForm && (
+              <Button size="sm" onClick={() => setShowForm(true)}>
+                <Plus size={15} /> New Client
+              </Button>
+            )
+          }
+        />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <Card className="overflow-hidden">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+            <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
               <tr>
-                <th className="px-4 py-2">Logo</th>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Code</th>
-                <th className="px-4 py-2">Currency</th>
-                <th className="px-4 py-2">Contact</th>
+                <th className="px-5 py-3 font-medium">Client</th>
+                <th className="px-5 py-3 font-medium">Code</th>
+                <th className="px-5 py-3 font-medium">Currency</th>
+                <th className="px-5 py-3 font-medium">Contact</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {clients.map((c) => (
-                <tr key={c.id} className="border-t border-zinc-100 dark:border-zinc-800">
-                  <td className="px-4 py-2">
-                    {c.logo_url ? (
-                      <Image
-                        src={`${API_URL}${c.logo_url}`}
-                        alt={c.name}
-                        width={32}
-                        height={32}
-                        className="h-8 w-8 object-contain"
-                        unoptimized
-                      />
-                    ) : (
-                      <span className="text-zinc-300">—</span>
-                    )}
+                <tr key={c.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <ClientLogo client={c} />
+                      <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                        {c.name}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-4 py-2 text-zinc-900 dark:text-zinc-50">{c.name}</td>
-                  <td className="px-4 py-2 text-zinc-500">{c.code}</td>
-                  <td className="px-4 py-2 text-zinc-500">{c.default_currency}</td>
-                  <td className="px-4 py-2 text-zinc-500">{c.contact_email}</td>
+                  <td className="px-5 py-3 text-zinc-500">{c.code}</td>
+                  <td className="px-5 py-3 text-zinc-500">{c.default_currency}</td>
+                  <td className="px-5 py-3 text-zinc-500">{c.contact_email || "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </main>
   );
@@ -148,67 +184,56 @@ function NewClientForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="grid grid-cols-1 gap-3 rounded-lg border border-zinc-200 p-4 sm:grid-cols-2 dark:border-zinc-800"
-    >
-      {error && (
-        <p className="col-span-full rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          {error}
-        </p>
-      )}
-      <Field label="Name" name="name" required />
-      <Field label="Code" name="code" required placeholder="e.g. SHELL" />
-      <Field label="Attention" name="attention_name" />
-      <Field label="Contact email" name="contact_email" type="email" />
-      <Field label="Contact phone" name="contact_phone" />
-      <Field label="Default currency" name="default_currency" placeholder="USD" />
-      <label className="col-span-full flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
-        Billing address
-        <textarea
-          name="billing_address"
-          rows={2}
-          className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-        />
-      </label>
-      <label className="col-span-full flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
-        Logo
-        <input type="file" name="logo" accept="image/*" className="text-sm" />
-      </label>
-      <button
-        type="submit"
-        disabled={submitting}
-        className="col-span-full mt-2 rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
-      >
-        {submitting ? "Saving..." : "Save client"}
-      </button>
-    </form>
-  );
-}
-
-function Field({
-  label,
-  name,
-  type = "text",
-  required,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  required?: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-sm text-zinc-700 dark:text-zinc-300">
-      {label}
-      <input
-        type={type}
-        name={name}
-        required={required}
-        placeholder={placeholder}
-        className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-      />
-    </label>
+    <Card>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+        {error && (
+          <div className="col-span-full">
+            <Alert>{error}</Alert>
+          </div>
+        )}
+        <Label>
+          Name
+          <Input name="name" required />
+        </Label>
+        <Label>
+          Code
+          <Input name="code" required placeholder="e.g. SHELL" />
+        </Label>
+        <Label>
+          Attention
+          <Input name="attention_name" />
+        </Label>
+        <Label>
+          Contact email
+          <Input name="contact_email" type="email" />
+        </Label>
+        <Label>
+          Contact phone
+          <Input name="contact_phone" />
+        </Label>
+        <Label>
+          Default currency
+          <Input name="default_currency" placeholder="USD" />
+        </Label>
+        <Label className="col-span-full">
+          Billing address
+          <Textarea name="billing_address" rows={2} />
+        </Label>
+        <Label className="col-span-full">
+          Logo
+          <input
+            type="file"
+            name="logo"
+            accept="image/*"
+            className="text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-zinc-700 hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-800 dark:file:text-zinc-200"
+          />
+        </Label>
+        <div className="col-span-full flex justify-end">
+          <Button type="submit" disabled={submitting}>
+            {submitting ? "Saving..." : "Save client"}
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }

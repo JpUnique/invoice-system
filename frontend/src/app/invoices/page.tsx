@@ -2,24 +2,28 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Download, FileText, Loader2, Plus, Search } from "lucide-react";
 import { Protected } from "@/components/protected";
-import { Nav } from "@/components/nav";
+import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
 import { api, ApiError, InvoiceListRow } from "@/lib/api";
 import { formatMoney, formatDate } from "@/lib/format";
-
-const statusStyles: Record<string, string> = {
-  draft: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
-  sent: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  paid: "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
-  void: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
-};
+import { statusTone } from "@/lib/status";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input, Select } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageLoading } from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function InvoicesPage() {
   return (
     <Protected>
-      <Nav />
-      <InvoicesContent />
+      <AppShell>
+        <InvoicesContent />
+      </AppShell>
     </Protected>
   );
 }
@@ -32,6 +36,25 @@ function InvoicesContent() {
   const [statusFilter, setStatusFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  async function handleDownload(inv: InvoiceListRow) {
+    if (!token) return;
+    setDownloadingId(inv.id);
+    try {
+      const blob = await api.getInvoicePdfBlob(token, inv.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${inv.invoice_no.replace(/\//g, "-")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not download PDF");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -58,39 +81,45 @@ function InvoicesContent() {
   });
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-1 flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Invoices</h1>
-        <Link
-          href="/invoices/new"
-          className="rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          New Invoice
-        </Link>
-      </div>
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-8">
+      <PageHeader
+        title="Invoices"
+        description="Standard and client co-branded proforma invoices."
+        actions={
+          <Button href="/invoices/new">
+            <Plus size={15} /> New Invoice
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap gap-2">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search invoice no..."
-          className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-        />
-        <select
+        <div className="relative">
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+          />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search invoice no..."
+            className="w-56 pl-8"
+          />
+        </div>
+        <Select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+          className="w-40"
         >
           <option value="">All statuses</option>
           <option value="draft">Draft</option>
           <option value="sent">Sent</option>
           <option value="paid">Paid</option>
           <option value="void">Void</option>
-        </select>
-        <select
+        </Select>
+        <Select
           value={clientFilter}
           onChange={(e) => setClientFilter(e.target.value)}
-          className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+          className="w-48"
         >
           <option value="">All clients</option>
           {clientNames.map((name) => (
@@ -98,66 +127,85 @@ function InvoicesContent() {
               {name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      {error && (
-        <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <Alert>{error}</Alert>}
 
       {loading ? (
-        <p className="text-zinc-500">Loading...</p>
+        <PageLoading />
       ) : filtered.length === 0 ? (
-        <p className="text-zinc-500">
-          {invoices.length === 0 ? "No invoices yet." : "No invoices match these filters."}
-        </p>
+        <EmptyState
+          icon={FileText}
+          title={invoices.length === 0 ? "No invoices yet" : "No matches"}
+          description={
+            invoices.length === 0
+              ? "Create your first invoice to get started."
+              : "No invoices match these filters."
+          }
+          action={
+            invoices.length === 0 && (
+              <Button size="sm" href="/invoices/new">
+                <Plus size={15} /> New Invoice
+              </Button>
+            )
+          }
+        />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+        <Card className="overflow-hidden">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
+            <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
               <tr>
-                <th className="px-4 py-2">Invoice No</th>
-                <th className="px-4 py-2">Client</th>
-                <th className="px-4 py-2">Date</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2 text-right">Total</th>
+                <th className="px-5 py-3 font-medium">Invoice No</th>
+                <th className="px-5 py-3 font-medium">Client</th>
+                <th className="px-5 py-3 font-medium">Date</th>
+                <th className="px-5 py-3 font-medium">Status</th>
+                <th className="px-5 py-3 text-right font-medium">Total</th>
+                <th className="w-10 px-5 py-3" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {filtered.map((inv) => (
                 <tr
                   key={inv.id}
-                  className="border-t border-zinc-100 dark:border-zinc-800"
+                  className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
                 >
-                  <td className="px-4 py-2">
+                  <td className="px-5 py-3">
                     <Link
                       href={`/invoices/${inv.id}`}
-                      className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                      className="font-medium text-zinc-900 hover:text-primary-600 dark:text-zinc-50"
                     >
                       {inv.invoice_no}
                     </Link>
                   </td>
-                  <td className="px-4 py-2 text-zinc-500">{inv.client_name}</td>
-                  <td className="px-4 py-2 text-zinc-500">{formatDate(inv.invoice_date)}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs font-medium capitalize ${
-                        statusStyles[inv.status] ?? statusStyles.draft
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
+                  <td className="px-5 py-3 text-zinc-500">{inv.client_name}</td>
+                  <td className="px-5 py-3 text-zinc-500">{formatDate(inv.invoice_date)}</td>
+                  <td className="px-5 py-3">
+                    <Badge tone={statusTone(inv.status)}>{inv.status}</Badge>
                   </td>
-                  <td className="px-4 py-2 text-right text-zinc-900 dark:text-zinc-50">
+                  <td className="px-5 py-3 text-right font-medium text-zinc-900 dark:text-zinc-50">
                     {formatMoney(inv.grand_total, inv.currency)}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(inv)}
+                      disabled={downloadingId === inv.id}
+                      title="Download PDF"
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-primary-50 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-primary-950"
+                    >
+                      {downloadingId === inv.id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Download size={14} />
+                      )}
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </main>
   );

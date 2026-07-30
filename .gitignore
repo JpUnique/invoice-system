@@ -18,3 +18,7 @@ backend/uploads/
 
 # database backups
 backups/
+
+# local Claude Code tooling (installed skills etc.) — not app code
+.claude/
+.agents/

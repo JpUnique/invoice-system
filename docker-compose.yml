@@ -33,6 +33,7 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
+      - ./assets:/app/assets:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s
@@ -44,7 +45,10 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081}
+        # Note the missing colon: falls back to the dev default only when
+        # the var is entirely unset, not when it's explicitly set to ""
+        # (the Caddy-fronted / relative-API-path setup — see .env.example).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL-http://localhost:8081}
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -52,6 +56,24 @@ services:
       backend:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+
 volumes:
   postgres_data:
   uploads:
+  caddy_data:
+  caddy_config:

@@ -78,6 +78,7 @@ export type Invoice = {
   vendor_code: string;
   invoice_period: string;
   subtotal: number;
+  discount_amount: number;
   vat_rate: number;
   vat_amount: number;
   grand_total: number;
@@ -126,6 +127,8 @@ export type CreateInvoiceInput = {
   invoice_period?: string;
   notes?: string;
   bank_account_id?: string;
+  billing_address?: string;
+  discount_amount?: number;
   sections: SectionInput[];
 };
 
@@ -152,64 +155,8 @@ export type BankAccountInput = {
   is_default?: boolean;
 };
 
-export type TransmittalItem = {
-  id: string;
-  description: string;
-  format_medium: string;
-  quantity: number;
-  remarks: string;
-};
-
-export type Transmittal = {
-  id: string;
-  transmittal_no: string;
-  status: "draft" | "dispatched" | "acknowledged";
-  client_id: string;
-  related_invoice_id?: string;
-  transmittal_date: string;
-  purpose: string;
-  mode_of_dispatch: string;
-  dispatched_by_name: string;
-  received_by_name: string;
-  remarks: string;
-  created_at: string;
-  items: TransmittalItem[];
-};
-
-export type TransmittalListRow = {
-  id: string;
-  transmittal_no: string;
-  status: string;
-  transmittal_date: string;
-  created_at: string;
-  client_id: string;
-  client_name: string;
-  client_code: string;
-  related_invoice_no?: string;
-};
-
-export type TransmittalItemInput = {
-  description: string;
-  format_medium?: string;
-  quantity?: number;
-  remarks?: string;
-};
-
-export type CreateTransmittalInput = {
-  client_id: string;
-  related_invoice_id?: string;
-  transmittal_date?: string;
-  purpose?: string;
-  mode_of_dispatch?: string;
-  dispatched_by_name?: string;
-  received_by_name?: string;
-  remarks?: string;
-  items: TransmittalItemInput[];
-};
-
 export type DashboardSummary = {
   invoice_counts: Record<string, number>;
-  transmittal_counts: Record<string, number>;
   total_clients: number;
   outstanding_by_currency: Record<string, number>;
   recent_invoices: {
@@ -221,12 +168,12 @@ export type DashboardSummary = {
     grand_total: number;
     created_at: string;
   }[];
-  recent_transmittals: {
-    id: string;
-    transmittal_no: string;
-    status: string;
+  billed_by_client: {
+    client_id: string;
     client_name: string;
-    created_at: string;
+    currency: string;
+    total_billed: number;
+    invoice_count: number;
   }[];
 };
 
@@ -263,6 +210,11 @@ export const api = {
 
   listClients: (token: string) => request<Client[]>("/api/v1/clients", { token }),
 
+  listClientAddresses: (token: string, clientId: string) =>
+    request<{ id: string; address: string }[]>(`/api/v1/clients/${clientId}/addresses`, {
+      token,
+    }),
+
   createClient: (token: string, form: FormData) =>
     request<Client>("/api/v1/clients", { method: "POST", token, body: form }),
 
@@ -282,33 +234,8 @@ export const api = {
   getInvoicePdfBlob: (token: string, id: string) =>
     getPdfBlob(token, `/api/v1/invoices/${id}/pdf`),
 
-  listTransmittals: (token: string) =>
-    request<TransmittalListRow[]>("/api/v1/transmittals", { token }),
-
-  getTransmittal: (token: string, id: string) =>
-    request<Transmittal>(`/api/v1/transmittals/${id}`, { token }),
-
-  createTransmittal: (token: string, input: CreateTransmittalInput) =>
-    request<Transmittal>("/api/v1/transmittals", {
-      method: "POST",
-      token,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    }),
-
-  getTransmittalPdfBlob: (token: string, id: string) =>
-    getPdfBlob(token, `/api/v1/transmittals/${id}/pdf`),
-
   updateInvoiceStatus: (token: string, id: string, status: string) =>
     request<Invoice>(`/api/v1/invoices/${id}/status`, {
-      method: "PATCH",
-      token,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    }),
-
-  updateTransmittalStatus: (token: string, id: string, status: string) =>
-    request<Transmittal>(`/api/v1/transmittals/${id}/status`, {
       method: "PATCH",
       token,
       headers: { "Content-Type": "application/json" },

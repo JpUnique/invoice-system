@@ -8,9 +8,10 @@ RETURNING last_value;
 INSERT INTO invoices (
     invoice_no, type, client_id, created_by, currency, invoice_date, due_date,
     contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate,
-    vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, bank_account_id
+    vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, bank_account_id,
+    billing_address_override, discount_amount
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
 RETURNING *;
 
 -- name: CreateInvoiceSection :one

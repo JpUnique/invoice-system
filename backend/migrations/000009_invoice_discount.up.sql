@@ -1,0 +1,1 @@
+ALTER TABLE invoices ADD COLUMN discount_amount NUMERIC(14, 2) NOT NULL DEFAULT 0;
