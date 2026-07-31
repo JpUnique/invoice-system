@@ -39,11 +39,32 @@ done
 echo "==> Pulling latest code"
 git pull --ff-only
 
-echo "==> Building and starting containers"
-docker compose up -d --build
+# Migrations run against postgres alone, before frontend/caddy even try to
+# start — deliberately decoupled from the rest of the stack. If a later
+# step fails (e.g. a port conflict on the frontend container), `set -e`
+# aborts the script, but by this point the schema is already in place
+# rather than silently skipped. (This is exactly the failure mode that
+# left a fresh deploy with an empty `users` table and every login
+# rejected — worth keeping these steps in this order.)
+echo "==> Starting database"
+docker compose up -d postgres
+
+echo "==> Waiting for database to be ready"
+tries=0
+until docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-petrodata}" -d "${POSTGRES_DB:-petrodata}" >/dev/null 2>&1; do
+  tries=$((tries + 1))
+  if [ "$tries" -gt 30 ]; then
+    echo "ERROR: postgres did not become ready in time." >&2
+    exit 1
+  fi
+  sleep 2
+done
 
 echo "==> Running database migrations"
 docker compose --profile tools run --rm migrate up
+
+echo "==> Building and starting the full stack"
+docker compose up -d --build
 
 echo "==> Status"
 docker compose ps
