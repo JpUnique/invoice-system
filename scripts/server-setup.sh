@@ -2,8 +2,15 @@
 # One-time bootstrap for a fresh Ubuntu server: installs Docker, clones the
 # repo, generates a real .env, and runs the first deploy. Safe to re-run —
 # each step skips itself if already done. See README.md "Deploying to the
-# physical server" for the full walkthrough and scripts/deploy.sh for
-# every deploy after this one.
+# Ubuntu server" for the full walkthrough and scripts/deploy.sh for every
+# deploy after this one.
+#
+# If this server already runs other applications, give this app its own
+# dedicated IP by setting BIND_IP first, e.g.:
+#   BIND_IP=192.168.86.229 bash server-setup.sh
+# That runs scripts/setup-dedicated-ip.sh for you before deploying, and
+# pre-fills BIND_IP into .env so nothing collides with what's already
+# running on this box.
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/JpUnique/invoice-system.git}"
@@ -59,6 +66,11 @@ fi
 
 cd "$TARGET_DIR"
 
+if [ -n "${BIND_IP:-}" ]; then
+  echo "==> Setting up dedicated IP ($BIND_IP)"
+  BIND_IP="$BIND_IP" ./scripts/setup-dedicated-ip.sh
+fi
+
 echo "==> Setting up .env"
 if [ -f .env ]; then
   echo ".env already exists, leaving it alone."
@@ -69,6 +81,20 @@ else
   sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" .env
   sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${postgres_password}|" .env
   echo "Generated .env with a strong JWT_SECRET and POSTGRES_PASSWORD."
+
+  if [ -n "${BIND_IP:-}" ]; then
+    if grep -q "^# BIND_IP=" .env; then
+      sed -i "s|^# BIND_IP=.*|BIND_IP=${BIND_IP}|" .env
+    else
+      echo "BIND_IP=${BIND_IP}" >>.env
+    fi
+    echo "Set BIND_IP=${BIND_IP} in .env."
+  fi
+fi
+
+if [ -n "${BIND_IP:-}" ]; then
+  echo "==> BIND_IP already configured, continuing straight to deploy"
+  exec ./scripts/deploy.sh
 fi
 
 cat <<'EOF'
@@ -77,10 +103,9 @@ cat <<'EOF'
     - NEXT_PUBLIC_API_URL — leave empty (the default) to use the bundled
       Caddy reverse proxy on one HTTPS origin. Only set this if you're
       intentionally bypassing Caddy.
-    - BIND_IP — leave commented out for now. If this server hosts other
-      applications, get a dedicated IP from your network team first, then
-      set BIND_IP to it (see README's "Running alongside other
-      applications on this server" section) before deploying for real.
+    - BIND_IP — leave commented out unless this server hosts other
+      applications and you have a dedicated IP for this one (see README's
+      "Running alongside other applications on this server" section).
 
 EOF
 read -rp "Press Enter once you've reviewed .env, to continue with the first deploy... "

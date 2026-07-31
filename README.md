@@ -141,48 +141,40 @@ After the first deploy:
 
 By default every service binds to all interfaces (`0.0.0.0`), same as a
 single-app server. If this box already runs something else on ports
-80/443, Caddy will fail to start (`deploy.sh` checks for this up front and
-tells you plainly rather than half-deploying).
+80/443, Caddy will fail to start (`deploy.sh` checks for this up front,
+address-aware, and tells you plainly rather than half-deploying).
 
 The fix is to give this app its **own dedicated IP** so it never touches
-the other application's ports at all, even if both use 80/443:
+the other application's ports at all, even if both use 80/443. You need an
+actual free IP on the same subnet first — get one from whoever manages
+your network (or, on a small office/consumer router like Google Wifi,
+confirm a candidate address isn't already handed out to something else).
 
-1. **Get a spare IP from your network/IT team** — one that's routable on
-   the same subnet as this server (or ask for a small VLAN if they'd
-   rather). This isn't something either of us can invent from the server
-   alone; it has to come from whoever manages your network.
-2. **Add it to the server's network interface.** Find your interface name
-   first (`ip addr` — something like `eth0` or `ens18`), then edit
-   `/etc/netplan/*.yaml` to add the new IP as a second address:
+Once you have the address, one command does the rest:
 
-   ```yaml
-   network:
-     ethernets:
-       eth0:                       # replace with your actual interface name
-         addresses:
-           - 10.0.0.5/24            # existing IP, unchanged
-           - 10.0.0.50/24           # the new dedicated IP your network team gave you
-   ```
+```bash
+BIND_IP=192.168.86.229 bash scripts/server-setup.sh
+```
 
-   Apply it safely — **`netplan try`** auto-reverts after 120 seconds if
-   the new config breaks connectivity, so a mistake can't lock you out over
-   SSH:
+(or `BIND_IP=192.168.86.229 ./scripts/setup-dedicated-ip.sh` on its own, if
+the app is already deployed and you're only adding the dedicated IP now).
+This:
 
-   ```bash
-   sudo netplan try
-   ```
-
-   Only run `sudo netplan apply` (permanent, no auto-revert) once you've
-   confirmed `netplan try` worked and you can still reach the server.
-3. **Point this app at it.** In `.env`, set:
-
-   ```bash
-   BIND_IP=10.0.0.50
-   ```
-
-   Then `./scripts/deploy.sh`. Every service (Postgres, backend, frontend,
-   Caddy) now binds only to `10.0.0.50` — completely invisible on whatever
-   IP/ports the other application uses, no coordination with it required.
+1. Adds the IP live to the server's primary network interface
+   (`ip addr add` — takes effect immediately, and is instantly reversible,
+   since it never touches any config file). It refuses to proceed if that
+   IP already answers a ping from elsewhere on the network.
+2. Prints the exact netplan snippet to make the address survive a reboot.
+   This part is **deliberately left as a manual step** — automatically
+   editing netplan config it hasn't seen before risks breaking the
+   server's primary IP or locking out SSH, so the script hands you the
+   precise addition to make (alongside your existing config, never
+   replacing it) plus the safe `sudo netplan try` apply flow, which
+   auto-reverts in 120 seconds if anything breaks.
+3. Sets `BIND_IP` in `.env` and deploys. Every service (Postgres, backend,
+   frontend, Caddy) now binds only to that address — completely invisible
+   on whatever IP/ports the other application uses, no coordination with
+   it required.
 
 ### Backups
 
