@@ -38,7 +38,7 @@ This starts:
 - `postgres` on `localhost:5435` (mapped off the default 5432 to avoid clashing with any local Postgres install)
 - `backend` on `localhost:8081` (`GET /health` for a liveness/DB check; mapped off 8080 to avoid clashing with other local services)
 - `frontend` on `localhost:3000`
-- `caddy` on `localhost:80`/`localhost:443` — a reverse proxy fronting both with a self-signed TLS cert (see [Deploying to the Ubuntu server](#deploying-to-the-ubuntu-server)); the ports above are still directly reachable too, so on your laptop you can ignore Caddy and just use `localhost:3000`.
+- `caddy` on `localhost:80` — a reverse proxy fronting both over plain HTTP (see [Deploying to the Ubuntu server](#deploying-to-the-ubuntu-server)); the ports above are still directly reachable too, so on your laptop you can ignore Caddy and just use `localhost:3000`.
 
 (Inside the Docker network, services still talk to each other on the standard ports — `postgres:5432`, `backend:8080`. The remapping above only affects host-machine access.)
 
@@ -77,8 +77,8 @@ Visit <http://localhost:3000>.
 ### Quick start
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/JpUnique/invoice-system/main/scripts/server-setup.sh -o server-setup.sh
-bash server-setup.sh
+curl -fsSL https://raw.githubusercontent.com/JpUnique/invoice-system/main/scripts/petrodata.sh -o petrodata.sh
+bash petrodata.sh setup
 ```
 
 This is a one-time bootstrap: installs Docker if missing, clones the repo,
@@ -90,7 +90,7 @@ done. The repo is private, so if cloning fails it'll tell you to run
 For every deploy after that, from inside the cloned repo:
 
 ```bash
-./scripts/deploy.sh
+./scripts/petrodata.sh deploy
 ```
 
 This pulls the latest code, rebuilds, runs any new database migrations, and
@@ -112,16 +112,10 @@ restarts — the thing to run whenever new commits land on `main`.
    migrations. It runs as a one-off container on the same Docker network as
    postgres, so it works regardless of `BIND_IP`/port configuration — no
    need to install the `migrate` CLI on the host.
-4. TLS is already handled: `caddy` fronts the frontend and backend on ports
-   80/443 using the `Caddyfile` at the repo root, with a locally-trusted
-   self-signed certificate (`tls internal` — there's no public domain for
-   this in-house deployment). Visit `https://<server-ip>` — the first visit
-   shows a certificate warning since it's self-signed; click through it, or
-   trust Caddy's local CA
-   (`docker compose exec caddy cat /data/caddy/pki/authorities/local/root.crt`)
-   on client machines to remove the warning. If the server later gets a
-   real domain, replace `tls internal` with the domain name in the
-   `Caddyfile` for automatic Let's Encrypt certs instead.
+4. `caddy` fronts the frontend and backend on port 80 (plain HTTP, no TLS)
+   using the `Caddyfile` at the repo root. Visit `http://<server-ip>`. If
+   the server later gets a real domain, you can switch the `Caddyfile` to
+   automatic Let's Encrypt HTTPS for that domain instead.
 
 After the first deploy:
 
@@ -140,12 +134,12 @@ After the first deploy:
 ### Running alongside other applications on this server
 
 By default every service binds to all interfaces (`0.0.0.0`), same as a
-single-app server. If this box already runs something else on ports
-80/443, Caddy will fail to start (`deploy.sh` checks for this up front,
+single-app server. If this box already runs something else on port 80,
+Caddy will fail to start (`scripts/petrodata.sh deploy` checks for this up front,
 address-aware, and tells you plainly rather than half-deploying).
 
 The fix is to give this app its **own dedicated IP** so it never touches
-the other application's ports at all, even if both use 80/443. You need an
+the other application's ports at all, even if both use port 80. You need an
 actual free IP on the same subnet first — get one from whoever manages
 your network (or, on a small office/consumer router like Google Wifi,
 confirm a candidate address isn't already handed out to something else).
@@ -153,10 +147,10 @@ confirm a candidate address isn't already handed out to something else).
 Once you have the address, one command does the rest:
 
 ```bash
-BIND_IP=192.168.86.229 bash scripts/server-setup.sh
+BIND_IP=192.168.86.229 bash scripts/petrodata.sh setup
 ```
 
-(or `BIND_IP=192.168.86.229 ./scripts/setup-dedicated-ip.sh` on its own, if
+(or `BIND_IP=192.168.86.229 ./scripts/petrodata.sh dedicated-ip` on its own, if
 the app is already deployed and you're only adding the dedicated IP now).
 This:
 
@@ -179,7 +173,7 @@ This:
 ### Backups
 
 ```bash
-./scripts/backup-db.sh
+./scripts/petrodata.sh backup
 ```
 
 Dumps the database to `backups/petrodata-<timestamp>.sql.gz` and the
@@ -188,11 +182,11 @@ uploads volume (client logos) to `backups/uploads-<timestamp>.tar.gz`
 into cron on the server:
 
 ```cron
-0 2 * * * cd ~/invoice-system && ./scripts/backup-db.sh >> backups/backup.log 2>&1
+0 2 * * * cd ~/invoice-system && ./scripts/petrodata.sh backup >> backups/backup.log 2>&1
 ```
 
 Restore the database with
-`./scripts/restore-db.sh backups/petrodata-<timestamp>.sql.gz` (prompts
+`./scripts/petrodata.sh restore backups/petrodata-<timestamp>.sql.gz` (prompts
 for confirmation — it drops and recreates the database first). Restore
 uploads by extracting the tarball into the `uploads` volume, e.g.
 `docker compose exec -T backend tar xzf - -C /app/uploads < backups/uploads-<timestamp>.tar.gz`.

@@ -1,19 +1,10 @@
-# Reverse proxy for the LAN-only deployment: terminates TLS with a
-# locally-trusted self-signed cert (no public domain needed) and routes
+# Reverse proxy for the LAN-only deployment: plain HTTP, no TLS. Routes
 # API/upload paths to the backend, everything else to the frontend.
-#
-# First visit will show a browser warning for the self-signed cert — click
-# through once, or install Caddy's local root CA
-# (https://caddyserver.com/docs/running#local-https-with-docker) to trust it.
 {
-	auto_https disable_redirects
+	auto_https off
 }
 
-:443 {
-	tls internal {
-		on_demand
-	}
-
+:80 {
 	handle /api/* {
 		reverse_proxy backend:8080
 	}
@@ -25,8 +16,4 @@
 	handle {
 		reverse_proxy frontend:3000
 	}
-}
-
-:80 {
-	redir https://{host}{uri} permanent
 }
