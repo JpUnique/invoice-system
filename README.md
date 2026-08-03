@@ -1,4 +1,4 @@
-# PetroData Invoice System
+![1785716015631](image/README/1785716015631.png)![1785716020620](image/README/1785716020620.png)# PetroData Invoice System
 
 Internal application for creating and tracking PetroData Management Services
 invoices (standard + client co-branded proforma) and generating
@@ -42,9 +42,9 @@ This starts:
 
 (Inside the Docker network, services still talk to each other on the standard ports — `postgres:5432`, `backend:8080`. The remapping above only affects host-machine access.)
 
-Default admin login: `admin@petrodata.net` / `ChangeMe123!` — **change this
-password before any real use** (see Deployment below; there's no self-service
-change-password UI yet, so do it via `psql` for now — see below).
+Default admin login: `system.admin@petrodata.net` / `QTXbKOMRvvU9k1oConBy` — **change
+this password before any real use** (see Deployment below; there's no
+self-service change-password UI yet, so do it via `psql` for now — see below).
 
 ## Local development (without Docker)
 
