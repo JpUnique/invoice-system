@@ -99,9 +99,13 @@ cmd_setup() {
     cp .env.example .env
     jwt_secret="$(openssl rand -base64 32)"
     postgres_password="$(openssl rand -base64 24 | tr -d '/+=')"
+    admin_password="$(openssl rand -base64 18 | tr -d '/+=')"
     sed -i "s|^JWT_SECRET=.*|JWT_SECRET=${jwt_secret}|" .env
     sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${postgres_password}|" .env
-    echo "Generated .env with a strong JWT_SECRET and POSTGRES_PASSWORD."
+    sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${admin_password}|" .env
+    echo "Generated .env with a strong JWT_SECRET, POSTGRES_PASSWORD, and ADMIN_PASSWORD."
+    echo "Admin login will be: system.admin@petrodata.net / ${admin_password}"
+    echo "(also readable any time from .env — write it down now if you're handing this off)"
 
     if [ -n "${BIND_IP:-}" ]; then
       if grep -q "^# BIND_IP=" .env; then
@@ -192,6 +196,20 @@ cmd_deploy() {
 
   echo "==> Running database migrations"
   docker compose --profile tools run --rm migrate up
+
+  # The migrations deliberately leave the bootstrap admin account with an
+  # unusable, randomly-generated password hash (see migration 000002's
+  # comment) rather than a real one baked into git. Set the actual login
+  # here, from .env, on every deploy — so it's always current with
+  # whatever ADMIN_PASSWORD you've set, and never lives in version control.
+  if [ -n "${ADMIN_PASSWORD:-}" ]; then
+    echo "==> Setting admin password from .env"
+    docker compose exec -T postgres psql -U "${POSTGRES_USER:-petrodata}" -d "${POSTGRES_DB:-petrodata}" -c \
+      "UPDATE users SET password_hash = crypt('${ADMIN_PASSWORD}', gen_salt('bf')) WHERE email = 'system.admin@petrodata.net';"
+  else
+    echo "WARNING: ADMIN_PASSWORD is not set in .env — the admin account has no usable password yet." >&2
+    echo "Add ADMIN_PASSWORD=<a strong password> to .env and re-run 'scripts/petrodata.sh deploy'." >&2
+  fi
 
   echo "==> Building and starting the full stack"
   docker compose up -d --build

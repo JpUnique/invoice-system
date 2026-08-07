@@ -42,9 +42,17 @@ This starts:
 
 (Inside the Docker network, services still talk to each other on the standard ports — `postgres:5432`, `backend:8080`. The remapping above only affects host-machine access.)
 
-Default admin login: `system.admin@petrodata.net` / `QTXbKOMRvvU9k1oConBy` — **change
-this password before any real use** (see Deployment below; there's no
-self-service change-password UI yet, so do it via `psql` for now — see below).
+Default admin email: `system.admin@petrodata.net`. Migrations deliberately leave
+this account with no usable password (a randomly-generated, unrecoverable
+hash) rather than a fixed one committed to git. Set a real password with:
+
+```bash
+docker compose exec -T postgres psql -U petrodata -d petrodata -c \
+  "UPDATE users SET password_hash = crypt('YOUR-PASSWORD', gen_salt('bf')) WHERE email = 'system.admin@petrodata.net';"
+```
+
+On a real deployment via `scripts/petrodata.sh`, this happens automatically —
+see Deployment below.
 
 ## Local development (without Docker)
 
@@ -82,10 +90,10 @@ bash petrodata.sh setup
 ```
 
 This is a one-time bootstrap: installs Docker if missing, clones the repo,
-generates a real `.env` (strong `JWT_SECRET`/`POSTGRES_PASSWORD`), and runs
-the first deploy. It's safe to re-run — every step skips itself if already
-done. The repo is private, so if cloning fails it'll tell you to run
-`gh auth login` (or set up an SSH deploy key) first.
+generates a real `.env` (strong `JWT_SECRET`/`POSTGRES_PASSWORD`/`ADMIN_PASSWORD`),
+and runs the first deploy. It's safe to re-run — every step skips itself if
+already done. If cloning fails (e.g. the repo is later made private), it'll
+tell you to run `gh auth login` (or set up an SSH deploy key) first.
 
 For every deploy after that, from inside the cloned repo:
 
@@ -98,34 +106,36 @@ restarts — the thing to run whenever new commits land on `main`.
 
 ### What the scripts do, spelled out
 
-1. `.env` is generated from `.env.example` with real secrets — at minimum a
-   strong `POSTGRES_PASSWORD` and `JWT_SECRET`. `APP_ENV=production` makes
-   the backend refuse to start if `JWT_SECRET` is still the dev default, as
-   a safety net. `NEXT_PUBLIC_API_URL` is left **empty** to use the bundled
-   Caddy reverse proxy (recommended — see below); Next.js bakes
-   `NEXT_PUBLIC_*` vars in at **build** time, so this has to be right
-   *before* `docker compose build` runs, which is why the script pauses for
-   you to review `.env` before deploying.
-2. `docker compose up -d --build` builds and starts postgres, backend,
+1. `.env` is generated from `.env.example` with real secrets — a strong
+   `POSTGRES_PASSWORD`, `JWT_SECRET`, and `ADMIN_PASSWORD`, all random,
+   none committed to git. `APP_ENV=production` makes the backend refuse to
+   start if `JWT_SECRET` is still the dev default, as a safety net.
+   `NEXT_PUBLIC_API_URL` is left **empty** to use the bundled Caddy reverse
+   proxy (recommended — see below); Next.js bakes `NEXT_PUBLIC_*` vars in
+   at **build** time, so this has to be right *before* `docker compose
+   build` runs, which is why the script pauses for you to review `.env`
+   before deploying.
+2. `docker compose --profile tools run --rm migrate up` applies database
+   migrations, including creating the bootstrap admin account
+   (`system.admin@petrodata.net`) with an unusable, randomly-generated
+   password hash — not a real password baked into git.
+3. The script then sets that account's actual password from
+   `ADMIN_PASSWORD` in `.env`, via a direct SQL update. This runs on every
+   deploy, so changing `ADMIN_PASSWORD` in `.env` and redeploying is also
+   how you rotate it later.
+4. `docker compose up -d --build` builds and starts postgres, backend,
    frontend, and Caddy.
-3. `docker compose --profile tools run --rm migrate up` applies database
-   migrations. It runs as a one-off container on the same Docker network as
-   postgres, so it works regardless of `BIND_IP`/port configuration — no
-   need to install the `migrate` CLI on the host.
-4. `caddy` fronts the frontend and backend on port 80 (plain HTTP, no TLS)
+5. `caddy` fronts the frontend and backend on port 80 (plain HTTP, no TLS)
    using the `Caddyfile` at the repo root. Visit `http://<server-ip>`. If
    the server later gets a real domain, you can switch the `Caddyfile` to
    automatic Let's Encrypt HTTPS for that domain instead.
 
 After the first deploy:
 
-- Change the default admin password immediately:
-
-  ```bash
-  docker compose exec postgres psql -U petrodata -d petrodata -c \
-    "UPDATE users SET password_hash = crypt('YOUR-NEW-PASSWORD', gen_salt('bf')) WHERE email = 'admin@petrodata.net';"
-  ```
-
+- Your admin login is `system.admin@petrodata.net` and whatever
+  `ADMIN_PASSWORD` ended up in `.env` — `setup` prints it once and it's
+  always readable from `.env` afterward. Store it somewhere durable
+  (password manager) since `.env` isn't backed up by `scripts/petrodata.sh backup`.
 - Set up scheduled backups (see below).
 - Make sure Docker itself starts on boot (`systemctl enable docker`) —
   `restart: unless-stopped` on every service then handles the rest of the
