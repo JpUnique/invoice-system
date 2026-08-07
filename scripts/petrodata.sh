@@ -58,6 +58,12 @@ cmd_setup() {
     echo "Docker already installed, skipping."
   fi
 
+  # Belt-and-suspenders, same as go-dbms: make sure the daemon itself is
+  # enabled to start on boot regardless of whether this is a fresh install.
+  # Combined with "restart: unless-stopped" on every service in
+  # docker-compose.yml, this is what brings the stack back after a reboot.
+  sudo systemctl enable --now docker
+
   if ! docker info >/dev/null 2>&1; then
     echo "Docker is installed but not usable by this user yet." >&2
     echo "Run 'newgrp docker' (or log out and back in), then re-run this command." >&2
@@ -217,6 +223,40 @@ cmd_deploy() {
   echo "==> Status"
   docker compose ps
 
+  # Same pattern as go-dbms: a systemd timer checks origin/main every 5
+  # minutes and on boot, pulling and redeploying on its own. Installed here
+  # (not in 'setup') so it's also picked up by servers that were already
+  # deployed before this existed — every 'deploy' call ensures it's there.
+  if [ ! -f /etc/systemd/system/invoice-system-autodeploy.service ]; then
+    echo "==> Installing auto-deploy timer"
+    REPO_DIR="$(pwd)"
+    sudo tee /etc/systemd/system/invoice-system-autodeploy.service >/dev/null <<EOF
+[Unit]
+Description=invoice-system auto-deploy (pull + re-run petrodata.sh deploy on new commits)
+
+[Service]
+Type=oneshot
+ExecStart=${REPO_DIR}/scripts/auto-deploy.sh
+EOF
+    sudo tee /etc/systemd/system/invoice-system-autodeploy.timer >/dev/null <<'EOF'
+[Unit]
+Description=Run invoice-system auto-deploy on boot and every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now invoice-system-autodeploy.timer
+    echo "Auto-deploy active: checks origin/main every 5 minutes and on boot."
+    echo "Status: sudo systemctl status invoice-system-autodeploy.timer"
+    echo "Disable: sudo systemctl disable --now invoice-system-autodeploy.timer"
+  fi
+
   echo
   echo "Deployed. Visit http://${BIND_IP:-<this-server-ip>}"
 }
@@ -252,6 +292,22 @@ cmd_dedicated_ip() {
     sudo ip addr add "${BIND_IP}/${PREFIX}" dev "$IFACE"
     echo "Added. Verifying:"
     ip -4 addr show dev "$IFACE" | grep "$BIND_IP"
+  fi
+
+  # Open only port 80 (Caddy, fronting frontend+backend on one origin) to
+  # this server's own LAN, and only on this app's dedicated IP — not the
+  # whole subnet's traffic to any destination, so other apps sharing this
+  # server (their own IPs/ports) are completely unaffected. If ufw isn't
+  # in use on this box, this is a no-op rather than a hard failure.
+  if command -v ufw >/dev/null 2>&1; then
+    LAN_SUBNET="$(ip -o -4 addr show dev "$IFACE" 2>/dev/null | awk '{print $4; exit}')"
+    if [ -n "$LAN_SUBNET" ]; then
+      echo "==> Allowing port 80 on $BIND_IP from $LAN_SUBNET via ufw"
+      sudo ufw allow from "$LAN_SUBNET" to "$BIND_IP" port 80 proto tcp comment 'invoice-system (LAN)'
+      sudo ufw reload
+    else
+      echo "Could not detect the LAN subnet for a ufw rule — add one manually: sudo ufw allow to $BIND_IP port 80 proto tcp" >&2
+    fi
   fi
 
   cat <<EOF
