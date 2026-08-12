@@ -97,7 +97,6 @@ services:
   tailscale:
     image: tailscale/tailscale:latest
     restart: unless-stopped
-    hostname: ${TS_HOSTNAME:-petrodata-invoices}
     environment:
       # Not a required (":?") var: compose interpolates every service's env
       # block up front regardless of profile, so a required var here would
@@ -106,6 +105,13 @@ services:
       # before bringing the service up; the image itself also refuses to
       # start without it.
       TS_AUTHKEY: ${TS_AUTHKEY:-}
+      # Docker's own top-level `hostname:` can't be set here — it conflicts
+      # with `network_mode: service:caddy` below ("conflicting options:
+      # hostname and the network mode"), since sharing another container's
+      # whole network namespace includes its hostname. The tailscale image
+      # reads TS_HOSTNAME itself instead, which sets the name it advertises
+      # on the tailnet independent of the container's OS-level hostname.
+      TS_HOSTNAME: ${TS_HOSTNAME:-petrodata-invoices}
       TS_STATE_DIR: /var/lib/tailscale
       TS_EXTRA_ARGS: --accept-dns=false
     volumes:
