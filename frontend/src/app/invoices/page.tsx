@@ -6,7 +6,7 @@ import { Download, FileText, Loader2, Plus, Search } from "lucide-react";
 import { Protected } from "@/components/protected";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
-import { api, ApiError, InvoiceListRow } from "@/lib/api";
+import { api, ApiError, Client, InvoiceListRow } from "@/lib/api";
 import { formatMoney, formatDate } from "@/lib/format";
 import { statusTone } from "@/lib/status";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export default function InvoicesPage() {
 function InvoicesContent() {
   const { token } = useAuth();
   const [invoices, setInvoices] = useState<InvoiceListRow[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
@@ -61,7 +62,12 @@ function InvoicesContent() {
       if (!token) return;
       setLoading(true);
       try {
-        setInvoices(await api.listInvoices(token));
+        const [invoiceRows, clientRows] = await Promise.all([
+          api.listInvoices(token),
+          api.listClients(token),
+        ]);
+        setInvoices(invoiceRows);
+        setClients(clientRows);
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Could not load invoices");
       } finally {
@@ -71,11 +77,11 @@ function InvoicesContent() {
     load();
   }, [token]);
 
-  const clientNames = Array.from(new Set(invoices.map((i) => i.client_name))).sort();
+  const sortedClients = [...clients].sort((a, b) => a.name.localeCompare(b.name));
 
   const filtered = invoices.filter((inv) => {
     if (statusFilter && inv.status !== statusFilter) return false;
-    if (clientFilter && inv.client_name !== clientFilter) return false;
+    if (clientFilter && inv.client_id !== clientFilter) return false;
     if (search && !inv.invoice_no.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -122,9 +128,9 @@ function InvoicesContent() {
           className="w-48"
         >
           <option value="">All clients</option>
-          {clientNames.map((name) => (
-            <option key={name} value={name}>
-              {name}
+          {sortedClients.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
             </option>
           ))}
         </Select>
