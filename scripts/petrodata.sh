@@ -9,6 +9,7 @@
 #   scripts/petrodata.sh setup           # one-time bootstrap on a fresh Ubuntu server
 #   scripts/petrodata.sh deploy          # pull, migrate, rebuild, restart (every deploy after setup)
 #   scripts/petrodata.sh dedicated-ip    # give this app its own IP (BIND_IP=... required)
+#   scripts/petrodata.sh tailscale       # bring up remote access over Tailscale (TS_AUTHKEY=... required)
 #   scripts/petrodata.sh backup          # dump DB + uploads to backups/
 #   scripts/petrodata.sh restore FILE    # DESTRUCTIVE: drop, recreate, and reload DB from a backup
 #
@@ -27,6 +28,8 @@ Commands:
                          this for every deploy after the first.
   dedicated-ip          Add a secondary IP to this server so the app doesn't
                          collide with anything else running here. Requires BIND_IP.
+  tailscale             Bring up remote access (e.g. for the MD) over a
+                         private Tailscale VPN. Requires TS_AUTHKEY in .env.
   backup                Dump the Postgres DB and uploads volume to backups/.
   restore FILE          DESTRUCTIVE: drop and recreate the DB, then reload FILE.
 EOF
@@ -339,6 +342,45 @@ Until you do that, re-add this IP after every reboot with:
 EOF
 }
 
+cmd_tailscale() {
+  cd "$(dirname "$0")/.."
+
+  if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+  fi
+
+  if [ -z "${TS_AUTHKEY:-}" ]; then
+    echo "TS_AUTHKEY is not set." >&2
+    echo "Generate a reusable, tagged key at https://login.tailscale.com/admin/settings/keys," >&2
+    echo "then add TS_AUTHKEY=<key> to .env and re-run this command." >&2
+    exit 1
+  fi
+
+  echo "==> Starting Tailscale sidecar"
+  docker compose --profile tailscale up -d tailscale
+
+  echo "==> Waiting for it to join the tailnet"
+  tries=0
+  until docker compose exec -T tailscale tailscale status >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    if [ "$tries" -gt 30 ]; then
+      echo "ERROR: tailscale did not come up in time — check 'docker compose logs tailscale'." >&2
+      exit 1
+    fi
+    sleep 2
+  done
+
+  echo "==> Status"
+  docker compose exec -T tailscale tailscale status
+
+  echo
+  echo "Reachable over the tailnet at http://${TS_HOSTNAME:-petrodata-invoices} (MagicDNS) once the"
+  echo "MD's device is on the same tailnet, or at the IP shown above."
+}
+
 cmd_backup() {
   cd "$(dirname "$0")/.."
 
@@ -410,6 +452,7 @@ case "$COMMAND" in
   setup) cmd_setup "$@" ;;
   deploy) cmd_deploy "$@" ;;
   dedicated-ip) cmd_dedicated_ip "$@" ;;
+  tailscale) cmd_tailscale "$@" ;;
   backup) cmd_backup "$@" ;;
   restore) cmd_restore "$@" ;;
   *) usage ;;

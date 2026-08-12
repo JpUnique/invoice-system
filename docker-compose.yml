@@ -88,8 +88,40 @@ services:
       frontend:
         condition: service_started
 
+  # Optional remote access (e.g. for the MD) over a private Tailscale mesh
+  # VPN. Never starts with a plain `docker compose up` — only with
+  # `docker compose --profile tailscale up -d`, or `scripts/petrodata.sh
+  # tailscale`. Shares Caddy's network namespace so port 80 becomes
+  # reachable over the tailnet too, without any Caddyfile change and without
+  # touching the existing LAN/dedicated-IP setup (both work simultaneously).
+  tailscale:
+    image: tailscale/tailscale:latest
+    restart: unless-stopped
+    hostname: ${TS_HOSTNAME:-petrodata-invoices}
+    environment:
+      # Not a required (":?") var: compose interpolates every service's env
+      # block up front regardless of profile, so a required var here would
+      # break plain `docker compose up` for everyone, even those never
+      # touching Tailscale. cmd_tailscale in petrodata.sh checks this is set
+      # before bringing the service up; the image itself also refuses to
+      # start without it.
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_EXTRA_ARGS: --accept-dns=false
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    profiles: ["tailscale"]
+    network_mode: "service:caddy"
+    depends_on:
+      caddy:
+        condition: service_started
+
 volumes:
   postgres_data:
   uploads:
   caddy_data:
   caddy_config:
+  tailscale_state:
