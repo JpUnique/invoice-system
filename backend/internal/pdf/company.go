@@ -19,7 +19,12 @@ var DefaultBank = BankDetails{
 	AccountName:                "Petrodata Management Services Ltd",
 	AccountNumber:              "0696782512",
 	SwiftCode:                  "ABNGNGLA",
+	BankAddress:                "11A Adeola Odeku Street, Victoria Island Lagos",
 	CorrespondentBank:          "Citibank, New York",
 	CorrespondentAccountNumber: "36145842",
+	CorrespondentBankAddress:   "New York N.Y 100043",
+	CorrespondentSwiftCode:     "CITIUS33",
+	CorrespondentRoutingNumber: "21000089",
+	CorrespondentAccountName:   "Access Bank PLC",
 	Purpose:                    "Services Rendered",
 }

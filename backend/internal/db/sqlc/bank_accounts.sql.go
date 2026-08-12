@@ -22,11 +22,13 @@ func (q *Queries) ClearDefaultForCurrency(ctx context.Context, currency string) 
 
 const createBankAccount = `-- name: CreateBankAccount :one
 INSERT INTO bank_accounts (
-    bank_name, account_name, account_number, swift_code,
-    correspondent_bank, correspondent_account_number, currency, is_default
+    bank_name, account_name, account_number, swift_code, bank_address,
+    correspondent_bank, correspondent_account_number, correspondent_bank_address,
+    correspondent_swift_code, correspondent_routing_number, correspondent_account_name,
+    currency, is_default
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+RETURNING id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at, bank_address, correspondent_bank_address, correspondent_swift_code, correspondent_routing_number, correspondent_account_name
 `
 
 type CreateBankAccountParams struct {
@@ -34,8 +36,13 @@ type CreateBankAccountParams struct {
 	AccountName                string `json:"account_name"`
 	AccountNumber              string `json:"account_number"`
 	SwiftCode                  string `json:"swift_code"`
+	BankAddress                string `json:"bank_address"`
 	CorrespondentBank          string `json:"correspondent_bank"`
 	CorrespondentAccountNumber string `json:"correspondent_account_number"`
+	CorrespondentBankAddress   string `json:"correspondent_bank_address"`
+	CorrespondentSwiftCode     string `json:"correspondent_swift_code"`
+	CorrespondentRoutingNumber string `json:"correspondent_routing_number"`
+	CorrespondentAccountName   string `json:"correspondent_account_name"`
 	Currency                   string `json:"currency"`
 	IsDefault                  bool   `json:"is_default"`
 }
@@ -46,8 +53,13 @@ func (q *Queries) CreateBankAccount(ctx context.Context, arg CreateBankAccountPa
 		arg.AccountName,
 		arg.AccountNumber,
 		arg.SwiftCode,
+		arg.BankAddress,
 		arg.CorrespondentBank,
 		arg.CorrespondentAccountNumber,
+		arg.CorrespondentBankAddress,
+		arg.CorrespondentSwiftCode,
+		arg.CorrespondentRoutingNumber,
+		arg.CorrespondentAccountName,
 		arg.Currency,
 		arg.IsDefault,
 	)
@@ -64,6 +76,11 @@ func (q *Queries) CreateBankAccount(ctx context.Context, arg CreateBankAccountPa
 		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BankAddress,
+		&i.CorrespondentBankAddress,
+		&i.CorrespondentSwiftCode,
+		&i.CorrespondentRoutingNumber,
+		&i.CorrespondentAccountName,
 	)
 	return i, err
 }
@@ -78,7 +95,7 @@ func (q *Queries) DeleteBankAccount(ctx context.Context, id pgtype.UUID) error {
 }
 
 const getBankAccount = `-- name: GetBankAccount :one
-SELECT id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at FROM bank_accounts WHERE id = $1
+SELECT id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at, bank_address, correspondent_bank_address, correspondent_swift_code, correspondent_routing_number, correspondent_account_name FROM bank_accounts WHERE id = $1
 `
 
 func (q *Queries) GetBankAccount(ctx context.Context, id pgtype.UUID) (BankAccount, error) {
@@ -96,12 +113,17 @@ func (q *Queries) GetBankAccount(ctx context.Context, id pgtype.UUID) (BankAccou
 		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BankAddress,
+		&i.CorrespondentBankAddress,
+		&i.CorrespondentSwiftCode,
+		&i.CorrespondentRoutingNumber,
+		&i.CorrespondentAccountName,
 	)
 	return i, err
 }
 
 const getDefaultBankAccountForCurrency = `-- name: GetDefaultBankAccountForCurrency :one
-SELECT id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at FROM bank_accounts WHERE currency = $1 ORDER BY is_default DESC, created_at ASC LIMIT 1
+SELECT id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at, bank_address, correspondent_bank_address, correspondent_swift_code, correspondent_routing_number, correspondent_account_name FROM bank_accounts WHERE currency = $1 ORDER BY is_default DESC, created_at ASC LIMIT 1
 `
 
 func (q *Queries) GetDefaultBankAccountForCurrency(ctx context.Context, currency string) (BankAccount, error) {
@@ -119,12 +141,17 @@ func (q *Queries) GetDefaultBankAccountForCurrency(ctx context.Context, currency
 		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BankAddress,
+		&i.CorrespondentBankAddress,
+		&i.CorrespondentSwiftCode,
+		&i.CorrespondentRoutingNumber,
+		&i.CorrespondentAccountName,
 	)
 	return i, err
 }
 
 const listBankAccounts = `-- name: ListBankAccounts :many
-SELECT id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at FROM bank_accounts ORDER BY currency ASC, is_default DESC, bank_name ASC
+SELECT id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at, bank_address, correspondent_bank_address, correspondent_swift_code, correspondent_routing_number, correspondent_account_name FROM bank_accounts ORDER BY currency ASC, is_default DESC, bank_name ASC
 `
 
 func (q *Queries) ListBankAccounts(ctx context.Context) ([]BankAccount, error) {
@@ -148,6 +175,11 @@ func (q *Queries) ListBankAccounts(ctx context.Context) ([]BankAccount, error) {
 			&i.IsDefault,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.BankAddress,
+			&i.CorrespondentBankAddress,
+			&i.CorrespondentSwiftCode,
+			&i.CorrespondentRoutingNumber,
+			&i.CorrespondentAccountName,
 		); err != nil {
 			return nil, err
 		}
@@ -165,13 +197,18 @@ UPDATE bank_accounts SET
     account_name = $3,
     account_number = $4,
     swift_code = $5,
-    correspondent_bank = $6,
-    correspondent_account_number = $7,
-    currency = $8,
-    is_default = $9,
+    bank_address = $6,
+    correspondent_bank = $7,
+    correspondent_account_number = $8,
+    correspondent_bank_address = $9,
+    correspondent_swift_code = $10,
+    correspondent_routing_number = $11,
+    correspondent_account_name = $12,
+    currency = $13,
+    is_default = $14,
     updated_at = now()
 WHERE id = $1
-RETURNING id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at
+RETURNING id, bank_name, account_name, account_number, swift_code, correspondent_bank, correspondent_account_number, currency, is_default, created_at, updated_at, bank_address, correspondent_bank_address, correspondent_swift_code, correspondent_routing_number, correspondent_account_name
 `
 
 type UpdateBankAccountParams struct {
@@ -180,8 +217,13 @@ type UpdateBankAccountParams struct {
 	AccountName                string      `json:"account_name"`
 	AccountNumber              string      `json:"account_number"`
 	SwiftCode                  string      `json:"swift_code"`
+	BankAddress                string      `json:"bank_address"`
 	CorrespondentBank          string      `json:"correspondent_bank"`
 	CorrespondentAccountNumber string      `json:"correspondent_account_number"`
+	CorrespondentBankAddress   string      `json:"correspondent_bank_address"`
+	CorrespondentSwiftCode     string      `json:"correspondent_swift_code"`
+	CorrespondentRoutingNumber string      `json:"correspondent_routing_number"`
+	CorrespondentAccountName   string      `json:"correspondent_account_name"`
 	Currency                   string      `json:"currency"`
 	IsDefault                  bool        `json:"is_default"`
 }
@@ -193,8 +235,13 @@ func (q *Queries) UpdateBankAccount(ctx context.Context, arg UpdateBankAccountPa
 		arg.AccountName,
 		arg.AccountNumber,
 		arg.SwiftCode,
+		arg.BankAddress,
 		arg.CorrespondentBank,
 		arg.CorrespondentAccountNumber,
+		arg.CorrespondentBankAddress,
+		arg.CorrespondentSwiftCode,
+		arg.CorrespondentRoutingNumber,
+		arg.CorrespondentAccountName,
 		arg.Currency,
 		arg.IsDefault,
 	)
@@ -211,6 +258,11 @@ func (q *Queries) UpdateBankAccount(ctx context.Context, arg UpdateBankAccountPa
 		&i.IsDefault,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BankAddress,
+		&i.CorrespondentBankAddress,
+		&i.CorrespondentSwiftCode,
+		&i.CorrespondentRoutingNumber,
+		&i.CorrespondentAccountName,
 	)
 	return i, err
 }

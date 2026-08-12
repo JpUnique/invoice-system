@@ -164,6 +164,11 @@ type BankAccount struct {
 	IsDefault                  bool               `json:"is_default"`
 	CreatedAt                  pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt                  pgtype.Timestamptz `json:"updated_at"`
+	BankAddress                string             `json:"bank_address"`
+	CorrespondentBankAddress   string             `json:"correspondent_bank_address"`
+	CorrespondentSwiftCode     string             `json:"correspondent_swift_code"`
+	CorrespondentRoutingNumber string             `json:"correspondent_routing_number"`
+	CorrespondentAccountName   string             `json:"correspondent_account_name"`
 }
 
 type Client struct {

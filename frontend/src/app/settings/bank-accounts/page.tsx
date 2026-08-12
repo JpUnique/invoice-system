@@ -32,8 +32,13 @@ function emptyForm(): BankAccountInput {
     account_name: "",
     account_number: "",
     swift_code: "",
+    bank_address: "",
     correspondent_bank: "",
     correspondent_account_number: "",
+    correspondent_bank_address: "",
+    correspondent_swift_code: "",
+    correspondent_routing_number: "",
+    correspondent_account_name: "",
     currency: "USD",
     is_default: false,
   };
@@ -205,8 +210,13 @@ function BankAccountForm({
           account_name: account.account_name,
           account_number: account.account_number,
           swift_code: account.swift_code,
+          bank_address: account.bank_address,
           correspondent_bank: account.correspondent_bank,
           correspondent_account_number: account.correspondent_account_number,
+          correspondent_bank_address: account.correspondent_bank_address,
+          correspondent_swift_code: account.correspondent_swift_code,
+          correspondent_routing_number: account.correspondent_routing_number,
+          correspondent_account_name: account.correspondent_account_name,
           currency: account.currency,
           is_default: account.is_default,
         }
@@ -276,6 +286,17 @@ function BankAccountForm({
           onChange={(e) => setForm({ ...form, swift_code: e.target.value })}
         />
       </Label>
+      <Label className="col-span-full">
+        Bank Address
+        <Input
+          value={form.bank_address}
+          onChange={(e) => setForm({ ...form, bank_address: e.target.value })}
+        />
+      </Label>
+
+      <div className="col-span-full -mb-1 mt-1 border-t border-zinc-100 pt-4 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:border-zinc-800">
+        Correspondent Bank (optional — for international wires)
+      </div>
       <Label>
         Correspondent Bank
         <Input
@@ -292,6 +313,37 @@ function BankAccountForm({
           }
         />
       </Label>
+      <Label>
+        Correspondent SWIFT Code
+        <Input
+          value={form.correspondent_swift_code}
+          onChange={(e) => setForm({ ...form, correspondent_swift_code: e.target.value })}
+        />
+      </Label>
+      <Label>
+        Correspondent Routing No.
+        <Input
+          value={form.correspondent_routing_number}
+          onChange={(e) =>
+            setForm({ ...form, correspondent_routing_number: e.target.value })
+          }
+        />
+      </Label>
+      <Label className="col-span-full">
+        Correspondent Account Name
+        <Input
+          value={form.correspondent_account_name}
+          onChange={(e) => setForm({ ...form, correspondent_account_name: e.target.value })}
+        />
+      </Label>
+      <Label className="col-span-full">
+        Correspondent Bank Address
+        <Input
+          value={form.correspondent_bank_address}
+          onChange={(e) => setForm({ ...form, correspondent_bank_address: e.target.value })}
+        />
+      </Label>
+
       <Label>
         Currency
         <Input

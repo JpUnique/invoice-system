@@ -293,12 +293,22 @@
     </div>
     {{end}}
     <div class="bottom-card bank">
+      {{if .Bank.CorrespondentBank}}
+      <div class="heading">{{.Currency}} Correspondent Bank Details</div>
+      <div class="kv"><span class="k">Bank Name</span><span class="v">{{.Bank.CorrespondentBank}}</span></div>
+      {{if .Bank.CorrespondentBankAddress}}<div class="kv"><span class="k">Bank Address</span><span class="v">{{.Bank.CorrespondentBankAddress}}</span></div>{{end}}
+      <div class="kv"><span class="k">Account No.</span><span class="v">{{.Bank.CorrespondentAccountNumber}}</span></div>
+      {{if .Bank.CorrespondentSwiftCode}}<div class="kv"><span class="k">SWIFT Code</span><span class="v">{{.Bank.CorrespondentSwiftCode}}</span></div>{{end}}
+      {{if .Bank.CorrespondentRoutingNumber}}<div class="kv"><span class="k">Routing No.</span><span class="v">{{.Bank.CorrespondentRoutingNumber}}</span></div>{{end}}
+      {{if .Bank.CorrespondentAccountName}}<div class="kv"><span class="k">Account Name</span><span class="v">{{.Bank.CorrespondentAccountName}}</span></div>{{end}}
+      <div class="heading" style="margin-top:8px;">Beneficiary Bank Details</div>
+      {{else}}
       <div class="heading">Bank Details</div>
+      {{end}}
       <div class="kv"><span class="k">Bank Name</span><span class="v">{{.Bank.BankName}}</span></div>
+      {{if .Bank.BankAddress}}<div class="kv"><span class="k">Bank Address</span><span class="v">{{.Bank.BankAddress}}</span></div>{{end}}
       <div class="kv"><span class="k">Account No.</span><span class="v">{{.Bank.AccountNumber}}</span></div>
       <div class="kv"><span class="k">SWIFT Code</span><span class="v">{{.Bank.SwiftCode}}</span></div>
-      <div class="kv"><span class="k">Correspondent Bank</span><span class="v">{{.Bank.CorrespondentBank}}</span></div>
-      <div class="kv"><span class="k">Correspondent A/C</span><span class="v">{{.Bank.CorrespondentAccountNumber}}</span></div>
     </div>
     <div class="bottom-card signatures">
       {{if .Sealed}}<img class="seal-stamp" src="{{.SealDataURI}}" alt="Sealed">{{end}}

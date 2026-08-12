@@ -28,8 +28,13 @@ type response struct {
 	AccountName                string `json:"account_name"`
 	AccountNumber              string `json:"account_number"`
 	SwiftCode                  string `json:"swift_code"`
+	BankAddress                string `json:"bank_address"`
 	CorrespondentBank          string `json:"correspondent_bank"`
 	CorrespondentAccountNumber string `json:"correspondent_account_number"`
+	CorrespondentBankAddress   string `json:"correspondent_bank_address"`
+	CorrespondentSwiftCode     string `json:"correspondent_swift_code"`
+	CorrespondentRoutingNumber string `json:"correspondent_routing_number"`
+	CorrespondentAccountName   string `json:"correspondent_account_name"`
 	Currency                   string `json:"currency"`
 	IsDefault                  bool   `json:"is_default"`
 }
@@ -41,8 +46,13 @@ func toResponse(b sqlc.BankAccount) response {
 		AccountName:                b.AccountName,
 		AccountNumber:              b.AccountNumber,
 		SwiftCode:                  b.SwiftCode,
+		BankAddress:                b.BankAddress,
 		CorrespondentBank:          b.CorrespondentBank,
 		CorrespondentAccountNumber: b.CorrespondentAccountNumber,
+		CorrespondentBankAddress:   b.CorrespondentBankAddress,
+		CorrespondentSwiftCode:     b.CorrespondentSwiftCode,
+		CorrespondentRoutingNumber: b.CorrespondentRoutingNumber,
+		CorrespondentAccountName:   b.CorrespondentAccountName,
 		Currency:                   b.Currency,
 		IsDefault:                  b.IsDefault,
 	}
@@ -53,8 +63,13 @@ type upsertRequest struct {
 	AccountName                string `json:"account_name"`
 	AccountNumber              string `json:"account_number"`
 	SwiftCode                  string `json:"swift_code"`
+	BankAddress                string `json:"bank_address"`
 	CorrespondentBank          string `json:"correspondent_bank"`
 	CorrespondentAccountNumber string `json:"correspondent_account_number"`
+	CorrespondentBankAddress   string `json:"correspondent_bank_address"`
+	CorrespondentSwiftCode     string `json:"correspondent_swift_code"`
+	CorrespondentRoutingNumber string `json:"correspondent_routing_number"`
+	CorrespondentAccountName   string `json:"correspondent_account_name"`
 	Currency                   string `json:"currency"`
 	IsDefault                  bool   `json:"is_default"`
 }
@@ -97,8 +112,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		AccountName:                req.AccountName,
 		AccountNumber:              req.AccountNumber,
 		SwiftCode:                  req.SwiftCode,
+		BankAddress:                req.BankAddress,
 		CorrespondentBank:          req.CorrespondentBank,
 		CorrespondentAccountNumber: req.CorrespondentAccountNumber,
+		CorrespondentBankAddress:   req.CorrespondentBankAddress,
+		CorrespondentSwiftCode:     req.CorrespondentSwiftCode,
+		CorrespondentRoutingNumber: req.CorrespondentRoutingNumber,
+		CorrespondentAccountName:   req.CorrespondentAccountName,
 		Currency:                   req.Currency,
 		IsDefault:                  req.IsDefault,
 	})
@@ -137,8 +157,13 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		AccountName:                req.AccountName,
 		AccountNumber:              req.AccountNumber,
 		SwiftCode:                  req.SwiftCode,
+		BankAddress:                req.BankAddress,
 		CorrespondentBank:          req.CorrespondentBank,
 		CorrespondentAccountNumber: req.CorrespondentAccountNumber,
+		CorrespondentBankAddress:   req.CorrespondentBankAddress,
+		CorrespondentSwiftCode:     req.CorrespondentSwiftCode,
+		CorrespondentRoutingNumber: req.CorrespondentRoutingNumber,
+		CorrespondentAccountName:   req.CorrespondentAccountName,
 		Currency:                   req.Currency,
 		IsDefault:                  req.IsDefault,
 	})

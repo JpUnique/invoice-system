@@ -19,8 +19,13 @@ type BankDetails struct {
 	AccountName                string
 	AccountNumber              string
 	SwiftCode                  string
+	BankAddress                string
 	CorrespondentBank          string
 	CorrespondentAccountNumber string
+	CorrespondentBankAddress   string
+	CorrespondentSwiftCode     string
+	CorrespondentRoutingNumber string
+	CorrespondentAccountName   string
 	Purpose                    string
 }
 

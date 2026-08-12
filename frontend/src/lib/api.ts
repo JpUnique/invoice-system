@@ -140,8 +140,13 @@ export type BankAccount = {
   account_name: string;
   account_number: string;
   swift_code: string;
+  bank_address: string;
   correspondent_bank: string;
   correspondent_account_number: string;
+  correspondent_bank_address: string;
+  correspondent_swift_code: string;
+  correspondent_routing_number: string;
+  correspondent_account_name: string;
   currency: string;
   is_default: boolean;
 };
@@ -151,8 +156,13 @@ export type BankAccountInput = {
   account_name: string;
   account_number: string;
   swift_code?: string;
+  bank_address?: string;
   correspondent_bank?: string;
   correspondent_account_number?: string;
+  correspondent_bank_address?: string;
+  correspondent_swift_code?: string;
+  correspondent_routing_number?: string;
+  correspondent_account_name?: string;
   currency: string;
   is_default?: boolean;
 };

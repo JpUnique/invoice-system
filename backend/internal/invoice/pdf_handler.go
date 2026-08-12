@@ -229,8 +229,13 @@ func resolveBankDetails(ctx context.Context, q *sqlc.Queries, bankAccountID pgty
 		AccountName:                account.AccountName,
 		AccountNumber:              account.AccountNumber,
 		SwiftCode:                  account.SwiftCode,
+		BankAddress:                account.BankAddress,
 		CorrespondentBank:          account.CorrespondentBank,
 		CorrespondentAccountNumber: account.CorrespondentAccountNumber,
+		CorrespondentBankAddress:   account.CorrespondentBankAddress,
+		CorrespondentSwiftCode:     account.CorrespondentSwiftCode,
+		CorrespondentRoutingNumber: account.CorrespondentRoutingNumber,
+		CorrespondentAccountName:   account.CorrespondentAccountName,
 		Purpose:                    pdf.DefaultBank.Purpose,
 	}
 }
