@@ -23,8 +23,10 @@ type Querier interface {
 	DeleteClient(ctx context.Context, id pgtype.UUID) error
 	GetBankAccount(ctx context.Context, id pgtype.UUID) (BankAccount, error)
 	GetClient(ctx context.Context, id pgtype.UUID) (Client, error)
+	GetCompanySettings(ctx context.Context) (CompanySetting, error)
 	GetDefaultBankAccountForCurrency(ctx context.Context, currency string) (BankAccount, error)
 	GetInvoice(ctx context.Context, id pgtype.UUID) (Invoice, error)
+	GetInvoiceByPublicToken(ctx context.Context, publicToken pgtype.UUID) (Invoice, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id pgtype.UUID) (User, error)
 	ListAuditLog(ctx context.Context) ([]AuditLog, error)
@@ -37,8 +39,11 @@ type Querier interface {
 	ListUsers(ctx context.Context) ([]User, error)
 	NextInvoiceNumber(ctx context.Context, scopeKey string) (int32, error)
 	SaveClientAddress(ctx context.Context, arg SaveClientAddressParams) (ClientAddress, error)
+	SealInvoice(ctx context.Context, arg SealInvoiceParams) (Invoice, error)
+	UnsealInvoice(ctx context.Context, id pgtype.UUID) (Invoice, error)
 	UpdateBankAccount(ctx context.Context, arg UpdateBankAccountParams) (BankAccount, error)
 	UpdateClient(ctx context.Context, arg UpdateClientParams) (Client, error)
+	UpdateCompanySettings(ctx context.Context, arg UpdateCompanySettingsParams) (CompanySetting, error)
 	UpdateInvoiceStatus(ctx context.Context, arg UpdateInvoiceStatusParams) (Invoice, error)
 	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error)
 }

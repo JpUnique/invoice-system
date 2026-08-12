@@ -14,6 +14,7 @@ import (
 	"github.com/petrodata/invoice-transmittal/internal/db"
 	"github.com/petrodata/invoice-transmittal/internal/db/sqlc"
 	"github.com/petrodata/invoice-transmittal/internal/pdf"
+	"github.com/petrodata/invoice-transmittal/internal/storage"
 )
 
 func (h *Handler) PDF(w http.ResponseWriter, r *http.Request) {
@@ -31,16 +32,41 @@ func (h *Handler) PDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sections, err := h.Queries.ListInvoiceSectionsByInvoice(ctx, id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not load invoice sections")
+	if r.URL.Query().Get("debug") == "html" {
+		html, _, err := h.buildInvoiceHTML(ctx, inv)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not render invoice")
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(html))
 		return
+	}
+
+	pdfBytes, filename, err := h.renderInvoicePDF(ctx, inv)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not generate pdf")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filename))
+	w.Write(pdfBytes)
+}
+
+// buildInvoiceHTML gathers everything needed to render an invoice (sections,
+// client, resolved company/bank details, QR code, seal) and renders it to
+// HTML. Shared by the authenticated PDF route, the public QR-code route, and
+// the debug=html query param, so all three always render identically.
+func (h *Handler) buildInvoiceHTML(ctx context.Context, inv sqlc.Invoice) (html string, filename string, err error) {
+	sections, err := h.Queries.ListInvoiceSectionsByInvoice(ctx, inv.ID)
+	if err != nil {
+		return "", "", fmt.Errorf("could not load invoice sections: %w", err)
 	}
 
 	client, err := h.Queries.GetClient(ctx, inv.ClientID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not load client")
-		return
+		return "", "", fmt.Errorf("could not load client: %w", err)
 	}
 
 	billingAddress := inv.BillingAddressOverride
@@ -66,8 +92,9 @@ func (h *Handler) PDF(w http.ResponseWriter, r *http.Request) {
 		GrandTotal:     inv.GrandTotal,
 		AmountInWords:  inv.AmountInWords,
 		Notes:          inv.Notes,
-		Company:        pdf.Company,
+		Company:        resolveCompanyInfo(ctx, h.Queries, h.Storage),
 		Bank:           resolveBankDetails(ctx, h.Queries, inv.BankAccountID),
+		Sealed:         inv.SealedAt.Valid,
 		Client: pdf.ClientView{
 			Name:           client.Name,
 			Code:           client.Code,
@@ -76,7 +103,20 @@ func (h *Handler) PDF(w http.ResponseWriter, r *http.Request) {
 			ContactEmail:   client.ContactEmail,
 		},
 	}
-	view.Company.LogoDataURI = pdf.PetroDataLogoDataURI()
+
+	if view.Sealed {
+		view.SealDataURI = pdf.PetroDataSealDataURI()
+	}
+
+	// Only render a QR code once PUBLIC_BASE_URL is configured — without it
+	// there's no reachable URL to encode, so the template's {{if}} guard
+	// just omits the QR block entirely.
+	if h.PublicBaseURL != "" {
+		publicURL := fmt.Sprintf("%s/api/v1/public/invoices/%s", h.PublicBaseURL, db.UUIDToString(inv.PublicToken))
+		if uri, err := pdf.QRCodeDataURI(publicURL, 160); err == nil {
+			view.QRCodeDataURI = uri
+		}
+	}
 
 	if client.LogoPath.Valid && client.LogoPath.String != "" {
 		if uri, err := pdf.ImageDataURI(filepath.Join(h.Storage.BaseDir, client.LogoPath.String)); err == nil {
@@ -93,8 +133,7 @@ func (h *Handler) PDF(w http.ResponseWriter, r *http.Request) {
 	for _, s := range sections {
 		items, err := h.Queries.ListLineItemsBySection(ctx, s.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not load line items")
-			return
+			return "", "", fmt.Errorf("could not load line items: %w", err)
 		}
 		sv := pdf.SectionView{Title: s.Title}
 		for _, li := range items {
@@ -114,31 +153,63 @@ func (h *Handler) PDF(w http.ResponseWriter, r *http.Request) {
 		templateName = "proforma.html"
 	}
 
-	html, err := h.PDFRenderer.RenderHTML(templateName, view)
+	renderedHTML, err := h.PDFRenderer.RenderHTML(templateName, view)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not render invoice")
-		return
+		return "", "", fmt.Errorf("could not render invoice: %w", err)
 	}
 
-	if r.URL.Query().Get("debug") == "html" {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(html))
-		return
+	filename = fmt.Sprintf("%s.pdf", strings.ReplaceAll(inv.InvoiceNo, "/", "-"))
+	return renderedHTML, filename, nil
+}
+
+// renderInvoicePDF renders an invoice to HTML and prints it to PDF bytes via
+// the warm headless-Chromium instance.
+func (h *Handler) renderInvoicePDF(ctx context.Context, inv sqlc.Invoice) (pdfBytes []byte, filename string, err error) {
+	html, filename, err := h.buildInvoiceHTML(ctx, inv)
+	if err != nil {
+		return nil, "", err
 	}
 
 	pdfCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	pdfBytes, err := h.Browser.GeneratePDF(pdfCtx, html)
+	pdfBytes, err = h.Browser.GeneratePDF(pdfCtx, html)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not generate pdf")
-		return
+		return nil, "", err
+	}
+	return pdfBytes, filename, nil
+}
+
+// resolveCompanyInfo reads the DB-backed company/letterhead settings
+// (editable via /company-settings), falling back to the hardcoded
+// pdf.Company/PetroDataLogoDataURI only if the DB is unreachable or the
+// singleton row is somehow missing — same fallback shape as resolveBankDetails.
+func resolveCompanyInfo(ctx context.Context, q *sqlc.Queries, store *storage.Store) pdf.CompanyInfo {
+	settings, err := q.GetCompanySettings(ctx)
+	if err != nil {
+		info := pdf.Company
+		info.LogoDataURI = pdf.PetroDataLogoDataURI()
+		return info
 	}
 
-	filename := fmt.Sprintf("%s.pdf", strings.ReplaceAll(inv.InvoiceNo, "/", "-"))
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, filename))
-	w.Write(pdfBytes)
+	info := pdf.CompanyInfo{
+		Name:         settings.Name,
+		AddressLine1: settings.AddressLine1,
+		AddressLine2: settings.AddressLine2,
+		Phone:        settings.Phone,
+		Email:        settings.Email,
+		Website:      settings.Website,
+		TIN:          settings.Tin,
+		RCNumber:     settings.RcNumber,
+	}
+	if settings.LogoPath != "" {
+		if uri, err := pdf.ImageDataURI(filepath.Join(store.BaseDir, settings.LogoPath)); err == nil {
+			info.LogoDataURI = uri
+			return info
+		}
+	}
+	info.LogoDataURI = pdf.PetroDataLogoDataURI()
+	return info
 }
 
 // resolveBankDetails looks up the bank account linked to the invoice at

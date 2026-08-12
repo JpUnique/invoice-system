@@ -23,15 +23,16 @@ import (
 const defaultVATRate = 7.5
 
 type Handler struct {
-	Pool        *pgxpool.Pool
-	Queries     *sqlc.Queries
-	Storage     *storage.Store
-	PDFRenderer *pdf.Renderer
-	Browser     *pdf.Browser
+	Pool          *pgxpool.Pool
+	Queries       *sqlc.Queries
+	Storage       *storage.Store
+	PDFRenderer   *pdf.Renderer
+	Browser       *pdf.Browser
+	PublicBaseURL string
 }
 
-func NewHandler(pool *pgxpool.Pool, q *sqlc.Queries, store *storage.Store, renderer *pdf.Renderer, browser *pdf.Browser) *Handler {
-	return &Handler{Pool: pool, Queries: q, Storage: store, PDFRenderer: renderer, Browser: browser}
+func NewHandler(pool *pgxpool.Pool, q *sqlc.Queries, store *storage.Store, renderer *pdf.Renderer, browser *pdf.Browser, publicBaseURL string) *Handler {
+	return &Handler{Pool: pool, Queries: q, Storage: store, PDFRenderer: renderer, Browser: browser, PublicBaseURL: publicBaseURL}
 }
 
 type lineItemRequest struct {
@@ -104,6 +105,8 @@ type invoiceResponse struct {
 	BankAccountID  string            `json:"bank_account_id,omitempty"`
 	BillingAddress string            `json:"billing_address"`
 	CreatedAt      string            `json:"created_at"`
+	SealedAt       string            `json:"sealed_at,omitempty"`
+	PublicToken    string            `json:"public_token"`
 	Sections       []sectionResponse `json:"sections,omitempty"`
 }
 
@@ -447,6 +450,83 @@ func (h *Handler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toInvoiceResponse(updated))
 }
 
+// Seal marks an invoice as sealed once the deal with the client has been
+// finalized — independent of invoice status, since invoices get drafted for
+// various purposes before a contract is actually final. The seal is stamped
+// onto the PDF (see buildInvoiceHTML) whenever sealed_at is set.
+func (h *Handler) Seal(w http.ResponseWriter, r *http.Request) {
+	id, err := db.StringToUUID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid invoice id")
+		return
+	}
+
+	ctx := r.Context()
+	claims, ok := auth.FromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	actorID, err := db.StringToUUID(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid token subject")
+		return
+	}
+	actor, err := h.Queries.GetUserByID(ctx, actorID)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "user not found")
+		return
+	}
+
+	updated, err := h.Queries.SealInvoice(ctx, sqlc.SealInvoiceParams{ID: id, SealedByUserID: actorID})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not seal invoice")
+		return
+	}
+
+	audit.Log(ctx, h.Queries, actorID, actor.Name, "invoice.sealed", "invoice", updated.ID,
+		fmt.Sprintf("Sealed invoice %s", updated.InvoiceNo))
+
+	writeJSON(w, http.StatusOK, toInvoiceResponse(updated))
+}
+
+// Unseal reverses a seal applied by mistake.
+func (h *Handler) Unseal(w http.ResponseWriter, r *http.Request) {
+	id, err := db.StringToUUID(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid invoice id")
+		return
+	}
+
+	ctx := r.Context()
+	claims, ok := auth.FromContext(ctx)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	actorID, err := db.StringToUUID(claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid token subject")
+		return
+	}
+	actor, err := h.Queries.GetUserByID(ctx, actorID)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, "user not found")
+		return
+	}
+
+	updated, err := h.Queries.UnsealInvoice(ctx, id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not unseal invoice")
+		return
+	}
+
+	audit.Log(ctx, h.Queries, actorID, actor.Name, "invoice.unsealed", "invoice", updated.ID,
+		fmt.Sprintf("Unsealed invoice %s", updated.InvoiceNo))
+
+	writeJSON(w, http.StatusOK, toInvoiceResponse(updated))
+}
+
 func toInvoiceResponse(inv sqlc.Invoice) invoiceResponse {
 	resp := invoiceResponse{
 		ID:             db.UUIDToString(inv.ID),
@@ -470,9 +550,13 @@ func toInvoiceResponse(inv sqlc.Invoice) invoiceResponse {
 		Notes:          inv.Notes,
 		BillingAddress: inv.BillingAddressOverride,
 		CreatedAt:      inv.CreatedAt.Time.Format(time.RFC3339),
+		PublicToken:    db.UUIDToString(inv.PublicToken),
 	}
 	if inv.BankAccountID.Valid {
 		resp.BankAccountID = db.UUIDToString(inv.BankAccountID)
+	}
+	if inv.SealedAt.Valid {
+		resp.SealedAt = inv.SealedAt.Time.Format(time.RFC3339)
 	}
 	return resp
 }

@@ -29,6 +29,9 @@ RETURNING *;
 -- name: GetInvoice :one
 SELECT * FROM invoices WHERE id = $1;
 
+-- name: GetInvoiceByPublicToken :one
+SELECT * FROM invoices WHERE public_token = $1;
+
 -- name: ListInvoiceSectionsByInvoice :many
 SELECT * FROM invoice_sections WHERE invoice_id = $1 ORDER BY sort_order ASC;
 
@@ -46,5 +49,15 @@ ORDER BY i.created_at DESC;
 
 -- name: UpdateInvoiceStatus :one
 UPDATE invoices SET status = $2, updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: SealInvoice :one
+UPDATE invoices SET sealed_at = now(), sealed_by_user_id = $2, updated_at = now()
+WHERE id = $1
+RETURNING *;
+
+-- name: UnsealInvoice :one
+UPDATE invoices SET sealed_at = NULL, sealed_by_user_id = NULL, updated_at = now()
 WHERE id = $1
 RETURNING *;

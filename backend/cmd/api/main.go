@@ -17,6 +17,7 @@ import (
 	"github.com/petrodata/invoice-transmittal/internal/auth"
 	"github.com/petrodata/invoice-transmittal/internal/bankaccount"
 	"github.com/petrodata/invoice-transmittal/internal/client"
+	"github.com/petrodata/invoice-transmittal/internal/companysettings"
 	"github.com/petrodata/invoice-transmittal/internal/config"
 	"github.com/petrodata/invoice-transmittal/internal/dashboard"
 	"github.com/petrodata/invoice-transmittal/internal/db"
@@ -63,10 +64,11 @@ func main() {
 
 	authHandler := auth.NewHandler(queries, cfg.JWTSecret)
 	clientHandler := client.NewHandler(queries, store)
-	invoiceHandler := invoice.NewHandler(pool, queries, store, pdfRenderer, browser)
+	invoiceHandler := invoice.NewHandler(pool, queries, store, pdfRenderer, browser, cfg.PublicBaseURL)
 	dashboardHandler := dashboard.NewHandler(queries)
 	auditHandler := audit.NewHandler(queries)
 	bankAccountHandler := bankaccount.NewHandler(queries)
+	companySettingsHandler := companysettings.NewHandler(queries, store)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -84,6 +86,14 @@ func main() {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Post("/auth/login", authHandler.Login)
+
+		// Unauthenticated: reachable via the QR code printed on every
+		// invoice PDF, so anyone with the link/QR (internal staff, the MD
+		// remotely over Tailscale) can view/download the soft copy without
+		// logging in. Guarded by an unguessable per-invoice token, not a
+		// sequential id.
+		r.Get("/public/invoices/{token}", invoiceHandler.PublicView)
+		r.Get("/public/invoices/{token}/pdf", invoiceHandler.PublicPDF)
 
 		r.Group(func(r chi.Router) {
 			r.Use(auth.RequireAuth(cfg.JWTSecret))
@@ -109,13 +119,17 @@ func main() {
 			r.Get("/dashboard/summary", dashboardHandler.Summary)
 
 			r.Get("/bank-accounts", bankAccountHandler.List)
+			r.Get("/company-settings", companySettingsHandler.Get)
 
 			r.Group(func(r chi.Router) {
 				r.Use(auth.RequireRole("admin", "gm"))
 				r.Patch("/invoices/{id}/status", invoiceHandler.UpdateStatus)
+				r.Patch("/invoices/{id}/seal", invoiceHandler.Seal)
+				r.Delete("/invoices/{id}/seal", invoiceHandler.Unseal)
 				r.Post("/bank-accounts", bankAccountHandler.Create)
 				r.Put("/bank-accounts/{id}", bankAccountHandler.Update)
 				r.Delete("/bank-accounts/{id}", bankAccountHandler.Delete)
+				r.Put("/company-settings", companySettingsHandler.Update)
 			})
 
 			r.Group(func(r chi.Router) {

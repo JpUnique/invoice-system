@@ -17,13 +17,37 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	qrcode "github.com/skip2/go-qrcode"
 )
+
+const pngDataURIPrefix = "data:image/png;base64,"
 
 //go:embed assets/petrodata-logo.png
 var petrodataLogoPNG []byte
 
+//go:embed assets/petrodata-seal.png
+var petrodataSealPNG []byte
+
 func PetroDataLogoDataURI() template.URL {
-	return template.URL("data:image/png;base64," + base64.StdEncoding.EncodeToString(petrodataLogoPNG))
+	return template.URL(pngDataURIPrefix + base64.StdEncoding.EncodeToString(petrodataLogoPNG))
+}
+
+func PetroDataSealDataURI() template.URL {
+	return template.URL(pngDataURIPrefix + base64.StdEncoding.EncodeToString(petrodataSealPNG))
+}
+
+// QRCodeDataURI generates a QR code encoding content and returns it as a
+// data URI, using the same embedding approach as the logo/seal: rendered
+// server-side and inlined as an <img>, since the PDF pipeline feeds a fully
+// formed HTML string into headless Chrome (a client-side JS QR library would
+// risk a race with the "images loaded" wait in GeneratePDF below, which only
+// waits on <img> tags).
+func QRCodeDataURI(content string, size int) (template.URL, error) {
+	png, err := qrcode.Encode(content, qrcode.Medium, size)
+	if err != nil {
+		return "", err
+	}
+	return template.URL(pngDataURIPrefix + base64.StdEncoding.EncodeToString(png)), nil
 }
 
 // ImageDataURI reads an image file from disk and returns it as a data URI,

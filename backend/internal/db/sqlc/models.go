@@ -187,6 +187,20 @@ type ClientAddress struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type CompanySetting struct {
+	ID           pgtype.UUID        `json:"id"`
+	Name         string             `json:"name"`
+	AddressLine1 string             `json:"address_line1"`
+	AddressLine2 string             `json:"address_line2"`
+	Phone        string             `json:"phone"`
+	Email        string             `json:"email"`
+	Website      string             `json:"website"`
+	Tin          string             `json:"tin"`
+	RcNumber     string             `json:"rc_number"`
+	LogoPath     string             `json:"logo_path"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Invoice struct {
 	ID                     pgtype.UUID        `json:"id"`
 	InvoiceNo              string             `json:"invoice_no"`
@@ -213,6 +227,9 @@ type Invoice struct {
 	BankAccountID          pgtype.UUID        `json:"bank_account_id"`
 	BillingAddressOverride string             `json:"billing_address_override"`
 	DiscountAmount         float64            `json:"discount_amount"`
+	PublicToken            pgtype.UUID        `json:"public_token"`
+	SealedAt               pgtype.Timestamptz `json:"sealed_at"`
+	SealedByUserID         pgtype.UUID        `json:"sealed_by_user_id"`
 }
 
 type InvoiceLineItem struct {

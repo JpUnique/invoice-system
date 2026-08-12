@@ -20,7 +20,7 @@ INSERT INTO invoices (
     billing_address_override, discount_amount
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id
 `
 
 type CreateInvoiceParams struct {
@@ -98,6 +98,9 @@ func (q *Queries) CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (I
 		&i.BankAccountID,
 		&i.BillingAddressOverride,
 		&i.DiscountAmount,
+		&i.PublicToken,
+		&i.SealedAt,
+		&i.SealedByUserID,
 	)
 	return i, err
 }
@@ -172,7 +175,7 @@ func (q *Queries) CreateInvoiceSection(ctx context.Context, arg CreateInvoiceSec
 }
 
 const getInvoice = `-- name: GetInvoice :one
-SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount FROM invoices WHERE id = $1
+SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id FROM invoices WHERE id = $1
 `
 
 func (q *Queries) GetInvoice(ctx context.Context, id pgtype.UUID) (Invoice, error) {
@@ -204,6 +207,49 @@ func (q *Queries) GetInvoice(ctx context.Context, id pgtype.UUID) (Invoice, erro
 		&i.BankAccountID,
 		&i.BillingAddressOverride,
 		&i.DiscountAmount,
+		&i.PublicToken,
+		&i.SealedAt,
+		&i.SealedByUserID,
+	)
+	return i, err
+}
+
+const getInvoiceByPublicToken = `-- name: GetInvoiceByPublicToken :one
+SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id FROM invoices WHERE public_token = $1
+`
+
+func (q *Queries) GetInvoiceByPublicToken(ctx context.Context, publicToken pgtype.UUID) (Invoice, error) {
+	row := q.db.QueryRow(ctx, getInvoiceByPublicToken, publicToken)
+	var i Invoice
+	err := row.Scan(
+		&i.ID,
+		&i.InvoiceNo,
+		&i.Type,
+		&i.ClientID,
+		&i.CreatedBy,
+		&i.Status,
+		&i.Currency,
+		&i.InvoiceDate,
+		&i.DueDate,
+		&i.ContractNo,
+		&i.PoNumber,
+		&i.VendorCode,
+		&i.InvoicePeriod,
+		&i.Subtotal,
+		&i.VatRate,
+		&i.VatAmount,
+		&i.GrandTotal,
+		&i.AmountInWords,
+		&i.Notes,
+		&i.PreparedByUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.BankAccountID,
+		&i.BillingAddressOverride,
+		&i.DiscountAmount,
+		&i.PublicToken,
+		&i.SealedAt,
+		&i.SealedByUserID,
 	)
 	return i, err
 }
@@ -341,10 +387,99 @@ func (q *Queries) NextInvoiceNumber(ctx context.Context, scopeKey string) (int32
 	return last_value, err
 }
 
+const sealInvoice = `-- name: SealInvoice :one
+UPDATE invoices SET sealed_at = now(), sealed_by_user_id = $2, updated_at = now()
+WHERE id = $1
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id
+`
+
+type SealInvoiceParams struct {
+	ID             pgtype.UUID `json:"id"`
+	SealedByUserID pgtype.UUID `json:"sealed_by_user_id"`
+}
+
+func (q *Queries) SealInvoice(ctx context.Context, arg SealInvoiceParams) (Invoice, error) {
+	row := q.db.QueryRow(ctx, sealInvoice, arg.ID, arg.SealedByUserID)
+	var i Invoice
+	err := row.Scan(
+		&i.ID,
+		&i.InvoiceNo,
+		&i.Type,
+		&i.ClientID,
+		&i.CreatedBy,
+		&i.Status,
+		&i.Currency,
+		&i.InvoiceDate,
+		&i.DueDate,
+		&i.ContractNo,
+		&i.PoNumber,
+		&i.VendorCode,
+		&i.InvoicePeriod,
+		&i.Subtotal,
+		&i.VatRate,
+		&i.VatAmount,
+		&i.GrandTotal,
+		&i.AmountInWords,
+		&i.Notes,
+		&i.PreparedByUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.BankAccountID,
+		&i.BillingAddressOverride,
+		&i.DiscountAmount,
+		&i.PublicToken,
+		&i.SealedAt,
+		&i.SealedByUserID,
+	)
+	return i, err
+}
+
+const unsealInvoice = `-- name: UnsealInvoice :one
+UPDATE invoices SET sealed_at = NULL, sealed_by_user_id = NULL, updated_at = now()
+WHERE id = $1
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id
+`
+
+func (q *Queries) UnsealInvoice(ctx context.Context, id pgtype.UUID) (Invoice, error) {
+	row := q.db.QueryRow(ctx, unsealInvoice, id)
+	var i Invoice
+	err := row.Scan(
+		&i.ID,
+		&i.InvoiceNo,
+		&i.Type,
+		&i.ClientID,
+		&i.CreatedBy,
+		&i.Status,
+		&i.Currency,
+		&i.InvoiceDate,
+		&i.DueDate,
+		&i.ContractNo,
+		&i.PoNumber,
+		&i.VendorCode,
+		&i.InvoicePeriod,
+		&i.Subtotal,
+		&i.VatRate,
+		&i.VatAmount,
+		&i.GrandTotal,
+		&i.AmountInWords,
+		&i.Notes,
+		&i.PreparedByUserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.BankAccountID,
+		&i.BillingAddressOverride,
+		&i.DiscountAmount,
+		&i.PublicToken,
+		&i.SealedAt,
+		&i.SealedByUserID,
+	)
+	return i, err
+}
+
 const updateInvoiceStatus = `-- name: UpdateInvoiceStatus :one
 UPDATE invoices SET status = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id
 `
 
 type UpdateInvoiceStatusParams struct {
@@ -381,6 +516,9 @@ func (q *Queries) UpdateInvoiceStatus(ctx context.Context, arg UpdateInvoiceStat
 		&i.BankAccountID,
 		&i.BillingAddressOverride,
 		&i.DiscountAmount,
+		&i.PublicToken,
+		&i.SealedAt,
+		&i.SealedByUserID,
 	)
 	return i, err
 }

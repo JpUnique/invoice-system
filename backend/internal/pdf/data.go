@@ -74,5 +74,7 @@ type InvoiceView struct {
 	Company        CompanyInfo
 	Bank           BankDetails
 	PreparedBy     PreparedByView
+	QRCodeDataURI  template.URL
+	Sealed         bool
+	SealDataURI    template.URL
 }
-

@@ -85,6 +85,8 @@ export type Invoice = {
   amount_in_words: string;
   notes: string;
   created_at: string;
+  sealed_at?: string;
+  public_token: string;
   sections: InvoiceSection[];
 };
 
@@ -155,6 +157,18 @@ export type BankAccountInput = {
   is_default?: boolean;
 };
 
+export type CompanySettings = {
+  name: string;
+  address_line1: string;
+  address_line2: string;
+  phone: string;
+  email: string;
+  website: string;
+  tin: string;
+  rc_number: string;
+  logo_url?: string;
+};
+
 export type DashboardSummary = {
   invoice_counts: Record<string, number>;
   total_clients: number;
@@ -218,6 +232,12 @@ export const api = {
   createClient: (token: string, form: FormData) =>
     request<Client>("/api/v1/clients", { method: "POST", token, body: form }),
 
+  updateClient: (token: string, id: string, form: FormData) =>
+    request<Client>(`/api/v1/clients/${id}`, { method: "PUT", token, body: form }),
+
+  deleteClient: (token: string, id: string) =>
+    request<void>(`/api/v1/clients/${id}`, { method: "DELETE", token }),
+
   listInvoices: (token: string) => request<InvoiceListRow[]>("/api/v1/invoices", { token }),
 
   getInvoice: (token: string, id: string) =>
@@ -241,6 +261,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     }),
+
+  sealInvoice: (token: string, id: string) =>
+    request<Invoice>(`/api/v1/invoices/${id}/seal`, { method: "PATCH", token }),
+
+  unsealInvoice: (token: string, id: string) =>
+    request<Invoice>(`/api/v1/invoices/${id}/seal`, { method: "DELETE", token }),
 
   getDashboardSummary: (token: string) =>
     request<DashboardSummary>("/api/v1/dashboard/summary", { token }),
@@ -269,6 +295,12 @@ export const api = {
 
   deleteBankAccount: (token: string, id: string) =>
     request<void>(`/api/v1/bank-accounts/${id}`, { method: "DELETE", token }),
+
+  getCompanySettings: (token: string) =>
+    request<CompanySettings>("/api/v1/company-settings", { token }),
+
+  updateCompanySettings: (token: string, form: FormData) =>
+    request<CompanySettings>("/api/v1/company-settings", { method: "PUT", token, body: form }),
 
   listUsers: (token: string) => request<User[]>("/api/v1/users", { token }),
 

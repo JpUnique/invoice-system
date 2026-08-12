@@ -17,6 +17,7 @@ type Config struct {
 	TemplatesDir       string
 	ChromePath         string
 	CORSAllowedOrigins []string
+	PublicBaseURL      string
 }
 
 func Load() Config {
@@ -33,6 +34,11 @@ func Load() Config {
 		// frontend and backend from the same origin and needs no CORS at
 		// all). Defaults to local dev; set for real origins in production.
 		CORSAllowedOrigins: strings.Split(getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"), ","),
+		// Base origin used to build the public, unauthenticated invoice link
+		// embedded in each PDF's QR code (e.g. a LAN IP or, once Tailscale is
+		// set up, its MagicDNS hostname). Empty by default since there's no
+		// sensible universal default — the QR simply doesn't render without it.
+		PublicBaseURL: strings.TrimSuffix(getEnv("PUBLIC_BASE_URL", ""), "/"),
 	}
 
 	// A default JWT secret in production would let anyone forge valid
