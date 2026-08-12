@@ -161,13 +161,20 @@ cmd_deploy() {
   set +a
 
   # Caddy is about to bind ${BIND_IP:-0.0.0.0}:80 — check that exact address
-  # isn't already taken before wasting a full rebuild on a failure. A
-  # listener on the wildcard address (0.0.0.0/*/[::]) would collide with any
-  # specific IP too, so that always counts as a conflict; a listener on some
-  # *other* specific IP doesn't, since BIND_IP keeps us on our own address.
+  # isn't already taken by something ELSE before wasting a full rebuild on a
+  # failure. A listener on the wildcard address (0.0.0.0/*/[::]) would
+  # collide with any specific IP too, so that always counts as a conflict;
+  # a listener on some *other* specific IP doesn't, since BIND_IP keeps us
+  # on our own address.
+  #
+  # Skipped entirely when this project's own caddy container is already the
+  # one holding the port — that's just every redeploy after the first
+  # (`docker compose up -d --build` below replaces it in place, which is
+  # not a conflict), not a stranger app to warn about.
   bind_addr="${BIND_IP:-0.0.0.0}"
   port=80
-  if ss -Htln 2>/dev/null | awk '{print $4}' |
+  if [ -z "$(docker compose ps -q --status running caddy 2>/dev/null)" ] &&
+    ss -Htln 2>/dev/null | awk '{print $4}' |
     grep -qE "^(0\.0\.0\.0|\*|\[::\]|${bind_addr}):${port}\$"; then
     echo "ERROR: ${bind_addr}:${port} is already in use on this server (likely another application)." >&2
     if [ -z "${BIND_IP:-}" ]; then
