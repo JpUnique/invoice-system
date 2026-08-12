@@ -9,6 +9,7 @@ import {
   Building2,
   History,
   Landmark,
+  Settings,
   UserCog,
   LogOut,
 } from "lucide-react";
@@ -21,9 +22,16 @@ const navItems = [
   { href: "/clients", label: "Clients", icon: Building2, tone: "primary" as const },
 ];
 
-const adminItems = [
-  { href: "/audit", label: "Audit Log", icon: History },
+// Shown to admin AND gm — matches the backend's admin+gm route group for
+// bank accounts / company settings (see main.go).
+const managementItems = [
   { href: "/settings/bank-accounts", label: "Bank Accounts", icon: Landmark },
+  { href: "/settings/company", label: "Company Settings", icon: Settings },
+];
+
+// Admin only, matching the backend's admin-only route group.
+const adminOnlyItems = [
+  { href: "/audit", label: "Audit Log", icon: History },
   { href: "/settings/users", label: "Users", icon: UserCog },
 ];
 
@@ -87,12 +95,23 @@ export function Sidebar() {
           <NavLink key={item.href} {...item} active={pathname === item.href} />
         ))}
 
+        {(user?.role === "admin" || user?.role === "gm") && (
+          <>
+            <p className="mb-1 mt-5 px-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+              Management
+            </p>
+            {managementItems.map((item) => (
+              <NavLink key={item.href} {...item} active={pathname === item.href} />
+            ))}
+          </>
+        )}
+
         {user?.role === "admin" && (
           <>
             <p className="mb-1 mt-5 px-3 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
               Admin
             </p>
-            {adminItems.map((item) => (
+            {adminOnlyItems.map((item) => (
               <NavLink key={item.href} {...item} active={pathname === item.href} />
             ))}
           </>
