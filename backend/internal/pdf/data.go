@@ -57,29 +57,30 @@ type PreparedByView struct {
 }
 
 type InvoiceView struct {
-	InvoiceNo      string
-	Type           string
-	Status         string
-	Currency       string
-	InvoiceDate    string
-	DueDate        string
-	ContractNo     string
-	PoNumber       string
-	VendorCode     string
-	InvoicePeriod  string
-	Subtotal       float64
-	DiscountAmount float64
-	VATRate        float64
-	VATAmount      float64
-	GrandTotal     float64
-	AmountInWords  string
-	Notes          string
-	Sections       []SectionView
-	Client         ClientView
-	Company        CompanyInfo
-	Bank           BankDetails
-	PreparedBy     PreparedByView
-	QRCodeDataURI  template.URL
-	Sealed         bool
-	SealDataURI    template.URL
+	InvoiceNo          string
+	Type               string
+	Status             string
+	Currency           string
+	InvoiceDate        string
+	DueDate            string
+	ContractNo         string
+	PoNumber           string
+	ServiceEntryNumber string
+	VendorCode         string
+	InvoicePeriod      string
+	Subtotal           float64
+	DiscountAmount     float64
+	VATRate            float64
+	VATAmount          float64
+	GrandTotal         float64
+	AmountInWords      string
+	Notes              string
+	Sections           []SectionView
+	Client             ClientView
+	Company            CompanyInfo
+	Bank               BankDetails
+	PreparedBy         PreparedByView
+	QRCodeDataURI      template.URL
+	Sealed             bool
+	SealDataURI        template.URL
 }

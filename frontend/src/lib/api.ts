@@ -84,6 +84,7 @@ export type Invoice = {
   grand_total: number;
   amount_in_words: string;
   notes: string;
+  service_entry_number: string;
   created_at: string;
   sealed_at?: string;
   public_token: string;
@@ -131,6 +132,7 @@ export type CreateInvoiceInput = {
   bank_account_id?: string;
   billing_address?: string;
   discount_amount?: number;
+  service_entry_number?: string;
   sections: SectionInput[];
 };
 

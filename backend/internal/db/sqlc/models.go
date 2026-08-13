@@ -235,6 +235,7 @@ type Invoice struct {
 	PublicToken            pgtype.UUID        `json:"public_token"`
 	SealedAt               pgtype.Timestamptz `json:"sealed_at"`
 	SealedByUserID         pgtype.UUID        `json:"sealed_by_user_id"`
+	ServiceEntryNumber     string             `json:"service_entry_number"`
 }
 
 type InvoiceLineItem struct {

@@ -71,6 +71,7 @@ function NewInvoiceContent() {
   const [customDueDate, setCustomDueDate] = useState("");
   const [contractNo, setContractNo] = useState("");
   const [poNumber, setPoNumber] = useState("");
+  const [serviceEntryNumber, setServiceEntryNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [sections, setSections] = useState<SectionForm[]>([emptySection()]);
   const [discountAmount, setDiscountAmount] = useState("");
@@ -126,7 +127,14 @@ function NewInvoiceContent() {
       ? newAddressText
       : savedAddresses.find((a) => a.id === billingAddressChoice)?.address ?? "";
 
-  const currencyBankAccounts = bankAccounts.filter((a) => a.currency === currency);
+  // Not currency-filtered on purpose — which bank to put on an invoice can
+  // depend on what the specific client needs (e.g. a client paying in NGN
+  // might still be sent USD account details on request), not just the
+  // invoice's own currency. The "Default for {currency}" option above the
+  // list still auto-picks based on currency when no explicit choice is made.
+  const sortedBankAccounts = [...bankAccounts].sort(
+    (a, b) => a.currency.localeCompare(b.currency) || a.bank_name.localeCompare(b.bank_name)
+  );
   const availableCurrencies = Array.from(new Set(bankAccounts.map((a) => a.currency))).sort();
   if (availableCurrencies.length === 0) availableCurrencies.push("USD", "NGN");
 
@@ -230,6 +238,7 @@ function NewInvoiceContent() {
         bank_account_id: bankAccountId || undefined,
         billing_address: billingAddress || undefined,
         discount_amount: discount || undefined,
+        service_entry_number: serviceEntryNumber || undefined,
         sections: payloadSections,
       });
       router.push(`/invoices/${invoice.id}`);
@@ -312,9 +321,9 @@ function NewInvoiceContent() {
               Bank Account
               <Select value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)}>
                 <option value="">Default for {currency || "currency"}</option>
-                {currencyBankAccounts.map((a) => (
+                {sortedBankAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.bank_name} &middot; {a.account_number}
+                    [{a.currency}] {a.bank_name} &middot; {a.account_number}
                   </option>
                 ))}
               </Select>
@@ -378,6 +387,15 @@ function NewInvoiceContent() {
             <Label>
               PO Number
               <Input value={poNumber} onChange={(e) => setPoNumber(e.target.value)} />
+            </Label>
+
+            <Label>
+              Service Entry Number
+              <Input
+                value={serviceEntryNumber}
+                onChange={(e) => setServiceEntryNumber(e.target.value)}
+                placeholder="Optional — not all clients require this"
+              />
             </Label>
 
             <Label className="col-span-full">

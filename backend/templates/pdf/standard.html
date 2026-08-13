@@ -231,6 +231,7 @@
     <div class="cell"><span class="k">Date</span><span class="v">{{date .InvoiceDate}}</span></div>
     <div class="cell"><span class="k">Due</span><span class="v">{{.DueDate}}</span></div>
     <div class="cell"><span class="k">Currency</span><span class="v">{{.Currency}}</span></div>
+    {{if .ServiceEntryNumber}}<div class="cell"><span class="k">Service Entry No.</span><span class="v">{{.ServiceEntryNumber}}</span></div>{{end}}
   </div>
 
   <div class="party-row">

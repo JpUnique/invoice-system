@@ -50,20 +50,21 @@ type sectionRequest struct {
 }
 
 type createInvoiceRequest struct {
-	ClientID       string           `json:"client_id"`
-	Type           string           `json:"type"`
-	Currency       string           `json:"currency"`
-	InvoiceDate    string           `json:"invoice_date"`
-	DueDate        string           `json:"due_date"`
-	ContractNo     string           `json:"contract_no"`
-	PoNumber       string           `json:"po_number"`
-	VendorCode     string           `json:"vendor_code"`
-	InvoicePeriod  string           `json:"invoice_period"`
-	Notes          string           `json:"notes"`
-	BankAccountID  string           `json:"bank_account_id"`
-	BillingAddress string           `json:"billing_address"`
-	DiscountAmount float64          `json:"discount_amount"`
-	Sections       []sectionRequest `json:"sections"`
+	ClientID           string           `json:"client_id"`
+	Type               string           `json:"type"`
+	Currency           string           `json:"currency"`
+	InvoiceDate        string           `json:"invoice_date"`
+	DueDate            string           `json:"due_date"`
+	ContractNo         string           `json:"contract_no"`
+	PoNumber           string           `json:"po_number"`
+	VendorCode         string           `json:"vendor_code"`
+	InvoicePeriod      string           `json:"invoice_period"`
+	Notes              string           `json:"notes"`
+	BankAccountID      string           `json:"bank_account_id"`
+	BillingAddress     string           `json:"billing_address"`
+	DiscountAmount     float64          `json:"discount_amount"`
+	ServiceEntryNumber string           `json:"service_entry_number"`
+	Sections           []sectionRequest `json:"sections"`
 }
 
 type lineItemResponse struct {
@@ -83,31 +84,32 @@ type sectionResponse struct {
 }
 
 type invoiceResponse struct {
-	ID             string            `json:"id"`
-	InvoiceNo      string            `json:"invoice_no"`
-	Type           string            `json:"type"`
-	Status         string            `json:"status"`
-	ClientID       string            `json:"client_id"`
-	Currency       string            `json:"currency"`
-	InvoiceDate    string            `json:"invoice_date"`
-	DueDate        string            `json:"due_date"`
-	ContractNo     string            `json:"contract_no"`
-	PoNumber       string            `json:"po_number"`
-	VendorCode     string            `json:"vendor_code"`
-	InvoicePeriod  string            `json:"invoice_period"`
-	Subtotal       float64           `json:"subtotal"`
-	DiscountAmount float64           `json:"discount_amount"`
-	VatRate        float64           `json:"vat_rate"`
-	VatAmount      float64           `json:"vat_amount"`
-	GrandTotal     float64           `json:"grand_total"`
-	AmountInWords  string            `json:"amount_in_words"`
-	Notes          string            `json:"notes"`
-	BankAccountID  string            `json:"bank_account_id,omitempty"`
-	BillingAddress string            `json:"billing_address"`
-	CreatedAt      string            `json:"created_at"`
-	SealedAt       string            `json:"sealed_at,omitempty"`
-	PublicToken    string            `json:"public_token"`
-	Sections       []sectionResponse `json:"sections,omitempty"`
+	ID                 string            `json:"id"`
+	InvoiceNo          string            `json:"invoice_no"`
+	Type               string            `json:"type"`
+	Status             string            `json:"status"`
+	ClientID           string            `json:"client_id"`
+	Currency           string            `json:"currency"`
+	InvoiceDate        string            `json:"invoice_date"`
+	DueDate            string            `json:"due_date"`
+	ContractNo         string            `json:"contract_no"`
+	PoNumber           string            `json:"po_number"`
+	VendorCode         string            `json:"vendor_code"`
+	InvoicePeriod      string            `json:"invoice_period"`
+	Subtotal           float64           `json:"subtotal"`
+	DiscountAmount     float64           `json:"discount_amount"`
+	VatRate            float64           `json:"vat_rate"`
+	VatAmount          float64           `json:"vat_amount"`
+	GrandTotal         float64           `json:"grand_total"`
+	AmountInWords      string            `json:"amount_in_words"`
+	Notes              string            `json:"notes"`
+	BankAccountID      string            `json:"bank_account_id,omitempty"`
+	BillingAddress     string            `json:"billing_address"`
+	ServiceEntryNumber string            `json:"service_entry_number"`
+	CreatedAt          string            `json:"created_at"`
+	SealedAt           string            `json:"sealed_at,omitempty"`
+	PublicToken        string            `json:"public_token"`
+	Sections           []sectionResponse `json:"sections,omitempty"`
 }
 
 type listRow struct {
@@ -324,6 +326,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		PreparedByUserID:       createdByID,
 		BankAccountID:          bankAccountID,
 		BillingAddressOverride: req.BillingAddress,
+		ServiceEntryNumber:     req.ServiceEntryNumber,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not create invoice")
@@ -529,28 +532,29 @@ func (h *Handler) Unseal(w http.ResponseWriter, r *http.Request) {
 
 func toInvoiceResponse(inv sqlc.Invoice) invoiceResponse {
 	resp := invoiceResponse{
-		ID:             db.UUIDToString(inv.ID),
-		InvoiceNo:      inv.InvoiceNo,
-		Type:           string(inv.Type),
-		Status:         string(inv.Status),
-		ClientID:       db.UUIDToString(inv.ClientID),
-		Currency:       inv.Currency,
-		InvoiceDate:    inv.InvoiceDate,
-		DueDate:        inv.DueDate,
-		ContractNo:     inv.ContractNo,
-		PoNumber:       inv.PoNumber,
-		VendorCode:     inv.VendorCode,
-		InvoicePeriod:  inv.InvoicePeriod,
-		Subtotal:       inv.Subtotal,
-		DiscountAmount: inv.DiscountAmount,
-		VatRate:        inv.VatRate,
-		VatAmount:      inv.VatAmount,
-		GrandTotal:     inv.GrandTotal,
-		AmountInWords:  inv.AmountInWords,
-		Notes:          inv.Notes,
-		BillingAddress: inv.BillingAddressOverride,
-		CreatedAt:      inv.CreatedAt.Time.Format(time.RFC3339),
-		PublicToken:    db.UUIDToString(inv.PublicToken),
+		ID:                 db.UUIDToString(inv.ID),
+		InvoiceNo:          inv.InvoiceNo,
+		Type:               string(inv.Type),
+		Status:             string(inv.Status),
+		ClientID:           db.UUIDToString(inv.ClientID),
+		Currency:           inv.Currency,
+		InvoiceDate:        inv.InvoiceDate,
+		DueDate:            inv.DueDate,
+		ContractNo:         inv.ContractNo,
+		PoNumber:           inv.PoNumber,
+		VendorCode:         inv.VendorCode,
+		InvoicePeriod:      inv.InvoicePeriod,
+		Subtotal:           inv.Subtotal,
+		DiscountAmount:     inv.DiscountAmount,
+		VatRate:            inv.VatRate,
+		VatAmount:          inv.VatAmount,
+		GrandTotal:         inv.GrandTotal,
+		AmountInWords:      inv.AmountInWords,
+		Notes:              inv.Notes,
+		BillingAddress:     inv.BillingAddressOverride,
+		ServiceEntryNumber: inv.ServiceEntryNumber,
+		CreatedAt:          inv.CreatedAt.Time.Format(time.RFC3339),
+		PublicToken:        db.UUIDToString(inv.PublicToken),
 	}
 	if inv.BankAccountID.Valid {
 		resp.BankAccountID = db.UUIDToString(inv.BankAccountID)

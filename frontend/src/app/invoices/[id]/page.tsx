@@ -189,6 +189,8 @@ function InvoiceDetailContent() {
             <p>Date: {formatDate(invoice.invoice_date)}</p>
             <p>Due: {invoice.due_date || "—"}</p>
             {invoice.contract_no && <p>Contract: {invoice.contract_no}</p>}
+            {invoice.po_number && <p>PO: {invoice.po_number}</p>}
+            {invoice.service_entry_number && <p>SEN: {invoice.service_entry_number}</p>}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={handleCopyLink} title="Copy shareable link">
