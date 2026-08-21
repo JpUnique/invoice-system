@@ -85,6 +85,7 @@ export type Invoice = {
   amount_in_words: string;
   notes: string;
   service_entry_number: string;
+  pdf_title: string;
   created_at: string;
   sealed_at?: string;
   public_token: string;
@@ -133,6 +134,7 @@ export type CreateInvoiceInput = {
   billing_address?: string;
   discount_amount?: number;
   service_entry_number?: string;
+  pdf_title?: string;
   sections: SectionInput[];
 };
 
@@ -221,7 +223,10 @@ async function getPdfBlob(token: string, path: string) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new ApiError(res.status, body.error ?? "Could not generate PDF");
   }
-  return res.blob();
+  const disposition = res.headers.get("Content-Disposition");
+  const filename = disposition?.match(/filename="(.+)"/)?.[1];
+  const blob = await res.blob();
+  return { blob, filename };
 }
 
 export const api = {

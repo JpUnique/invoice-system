@@ -118,11 +118,11 @@ function InvoiceDetailContent() {
     if (!token || !invoice) return;
     setDownloading(true);
     try {
-      const blob = await api.getInvoicePdfBlob(token, invoice.id);
+      const { blob, filename } = await api.getInvoicePdfBlob(token, invoice.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${invoice.invoice_no.replace(/\//g, "-")}.pdf`;
+      a.download = filename ?? `${invoice.invoice_no.replace(/\//g, "-")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -191,6 +191,7 @@ function InvoiceDetailContent() {
             {invoice.contract_no && <p>Contract: {invoice.contract_no}</p>}
             {invoice.po_number && <p>PO: {invoice.po_number}</p>}
             {invoice.service_entry_number && <p>SEN: {invoice.service_entry_number}</p>}
+            {invoice.pdf_title && <p>PDF Title: {invoice.pdf_title}</p>}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={handleCopyLink} title="Copy shareable link">

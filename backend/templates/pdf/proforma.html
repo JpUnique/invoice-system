@@ -3,6 +3,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<title>{{if .PdfTitle}}{{.PdfTitle}}{{else}}{{.InvoiceNo}}{{end}}</title>
 <style>
   :root {
     --red: #d81f27;
@@ -18,7 +19,7 @@
   body {
     font-family: "Helvetica Neue", Arial, sans-serif;
     font-size: 11px;
-    line-height: 1.5;
+    line-height: 1.4;
     color: var(--ink);
     background: #fcfcfb;
     margin: 0;
@@ -28,7 +29,7 @@
     height: 6px;
     border-radius: 3px;
     background: linear-gradient(90deg, var(--red) 0%, var(--red) 50%, var(--green) 50%, var(--green) 100%);
-    margin-bottom: 16px;
+    margin-bottom: 10px;
   }
   h1.title {
     text-align: center;
@@ -36,28 +37,28 @@
     font-size: 17px;
     font-weight: 700;
     letter-spacing: 3px;
-    margin: 0 0 14px 0;
+    margin: 0 0 10px 0;
   }
   table { width: 100%; border-collapse: collapse; }
 
-  .party-row { display: flex; gap: 14px; margin-bottom: 12px; }
+  .party-row { display: flex; gap: 14px; margin-bottom: 10px; }
   .party-card {
     flex: 1;
     background: #fff;
     border: 1px solid var(--line);
     border-radius: 8px;
     box-shadow: var(--card-shadow);
-    padding: 13px 15px;
+    padding: 9px 15px;
   }
   .party-card.client { border-left: 3px solid var(--green); }
   .party-card.company { border-left: 3px solid var(--red); }
-  .party-card .party-logo { height: 40px; margin-bottom: 8px; display: block; }
+  .party-card .party-logo { height: 34px; margin-bottom: 6px; display: block; }
   .party-card .label {
     font-size: 8.5px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
     font-weight: 700;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
   }
   .party-card.client .label { color: var(--green); }
   .party-card.company .label { color: var(--red); }
@@ -67,7 +68,7 @@
   .subject {
     text-align: center;
     font-weight: 700;
-    margin: 4px 0 12px 0;
+    margin: 4px 0 8px 0;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--muted);
@@ -80,11 +81,11 @@
     border-radius: 8px;
     box-shadow: var(--card-shadow);
     overflow: hidden;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
   }
   .meta-strip .cell {
     flex: 1;
-    padding: 7px 10px;
+    padding: 5px 10px;
     border-right: 1px solid var(--line);
   }
   .meta-strip .cell:last-child { border-right: none; }
@@ -114,11 +115,11 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
     text-align: left;
-    padding: 7px 8px;
+    padding: 5px 8px;
     border-bottom: 1px solid var(--line);
   }
   .items-table td {
-    padding: 7px 8px;
+    padding: 5px 8px;
     border-bottom: 1px solid var(--line);
   }
   .items-table td.num, .items-table th.num { text-align: right; }
@@ -126,7 +127,7 @@
   .items-table tbody tr:last-child td { border-bottom: none; }
 
   .summary {
-    margin-top: 12px;
+    margin-top: 8px;
     margin-left: auto;
     width: 260px;
   }
@@ -148,26 +149,26 @@
   .summary .row.total .num { color: var(--red); }
 
   .pls-pay {
-    margin-top: 10px;
-    padding: 9px 13px;
+    margin-top: 8px;
+    padding: 6px 13px;
     background: var(--panel);
     border-radius: 8px;
     border-left: 3px solid var(--green);
     font-weight: 700;
   }
 
-  .bottom-row { display: flex; align-items: flex-start; gap: 14px; margin-top: 18px; }
+  .bottom-row { display: flex; align-items: flex-start; gap: 14px; margin-top: 10px; }
   .bottom-card {
     background: #fff;
     border: 1px solid var(--line);
     border-radius: 8px;
     box-shadow: var(--card-shadow);
-    padding: 11px 15px;
+    padding: 8px 15px;
   }
-  .bottom-card.qr { flex: 0 0 78px; text-align: center; padding: 8px; }
-  .bottom-card.qr img { width: 62px; height: 62px; display: block; margin: 0 auto; }
+  .bottom-card.qr { flex: 0 0 72px; text-align: center; padding: 6px; }
+  .bottom-card.qr img { width: 56px; height: 56px; display: block; margin: 0 auto; }
   .bottom-card.qr .caption {
-    margin-top: 4px;
+    margin-top: 3px;
     font-size: 7px;
     line-height: 1.3;
     color: var(--muted);
@@ -200,15 +201,15 @@
 
   .sig-block .sig-line {
     border-top: 1px solid var(--ink);
-    margin-top: 22px;
+    margin-top: 14px;
     padding-top: 4px;
     color: var(--muted);
     font-size: 10px;
   }
-  .sig-block + .sig-block { margin-top: 14px; }
+  .sig-block + .sig-block { margin-top: 8px; }
 
   .footer {
-    margin-top: 20px;
+    margin-top: 12px;
     padding-top: 10px;
     border-top: 1px solid var(--line);
     text-align: center;

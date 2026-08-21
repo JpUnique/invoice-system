@@ -17,10 +17,10 @@ INSERT INTO invoices (
     invoice_no, type, client_id, created_by, currency, invoice_date, due_date,
     contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate,
     vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, bank_account_id,
-    billing_address_override, discount_amount, service_entry_number
+    billing_address_override, discount_amount, service_entry_number, pdf_title
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number, pdf_title
 `
 
 type CreateInvoiceParams struct {
@@ -46,6 +46,7 @@ type CreateInvoiceParams struct {
 	BillingAddressOverride string      `json:"billing_address_override"`
 	DiscountAmount         float64     `json:"discount_amount"`
 	ServiceEntryNumber     string      `json:"service_entry_number"`
+	PdfTitle               string      `json:"pdf_title"`
 }
 
 func (q *Queries) CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (Invoice, error) {
@@ -72,6 +73,7 @@ func (q *Queries) CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (I
 		arg.BillingAddressOverride,
 		arg.DiscountAmount,
 		arg.ServiceEntryNumber,
+		arg.PdfTitle,
 	)
 	var i Invoice
 	err := row.Scan(
@@ -104,6 +106,7 @@ func (q *Queries) CreateInvoice(ctx context.Context, arg CreateInvoiceParams) (I
 		&i.SealedAt,
 		&i.SealedByUserID,
 		&i.ServiceEntryNumber,
+		&i.PdfTitle,
 	)
 	return i, err
 }
@@ -178,7 +181,7 @@ func (q *Queries) CreateInvoiceSection(ctx context.Context, arg CreateInvoiceSec
 }
 
 const getInvoice = `-- name: GetInvoice :one
-SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number FROM invoices WHERE id = $1
+SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number, pdf_title FROM invoices WHERE id = $1
 `
 
 func (q *Queries) GetInvoice(ctx context.Context, id pgtype.UUID) (Invoice, error) {
@@ -214,12 +217,13 @@ func (q *Queries) GetInvoice(ctx context.Context, id pgtype.UUID) (Invoice, erro
 		&i.SealedAt,
 		&i.SealedByUserID,
 		&i.ServiceEntryNumber,
+		&i.PdfTitle,
 	)
 	return i, err
 }
 
 const getInvoiceByPublicToken = `-- name: GetInvoiceByPublicToken :one
-SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number FROM invoices WHERE public_token = $1
+SELECT id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number, pdf_title FROM invoices WHERE public_token = $1
 `
 
 func (q *Queries) GetInvoiceByPublicToken(ctx context.Context, publicToken pgtype.UUID) (Invoice, error) {
@@ -255,6 +259,7 @@ func (q *Queries) GetInvoiceByPublicToken(ctx context.Context, publicToken pgtyp
 		&i.SealedAt,
 		&i.SealedByUserID,
 		&i.ServiceEntryNumber,
+		&i.PdfTitle,
 	)
 	return i, err
 }
@@ -395,7 +400,7 @@ func (q *Queries) NextInvoiceNumber(ctx context.Context, scopeKey string) (int32
 const sealInvoice = `-- name: SealInvoice :one
 UPDATE invoices SET sealed_at = now(), sealed_by_user_id = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number, pdf_title
 `
 
 type SealInvoiceParams struct {
@@ -436,6 +441,7 @@ func (q *Queries) SealInvoice(ctx context.Context, arg SealInvoiceParams) (Invoi
 		&i.SealedAt,
 		&i.SealedByUserID,
 		&i.ServiceEntryNumber,
+		&i.PdfTitle,
 	)
 	return i, err
 }
@@ -443,7 +449,7 @@ func (q *Queries) SealInvoice(ctx context.Context, arg SealInvoiceParams) (Invoi
 const unsealInvoice = `-- name: UnsealInvoice :one
 UPDATE invoices SET sealed_at = NULL, sealed_by_user_id = NULL, updated_at = now()
 WHERE id = $1
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number, pdf_title
 `
 
 func (q *Queries) UnsealInvoice(ctx context.Context, id pgtype.UUID) (Invoice, error) {
@@ -479,6 +485,7 @@ func (q *Queries) UnsealInvoice(ctx context.Context, id pgtype.UUID) (Invoice, e
 		&i.SealedAt,
 		&i.SealedByUserID,
 		&i.ServiceEntryNumber,
+		&i.PdfTitle,
 	)
 	return i, err
 }
@@ -486,7 +493,7 @@ func (q *Queries) UnsealInvoice(ctx context.Context, id pgtype.UUID) (Invoice, e
 const updateInvoiceStatus = `-- name: UpdateInvoiceStatus :one
 UPDATE invoices SET status = $2, updated_at = now()
 WHERE id = $1
-RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number
+RETURNING id, invoice_no, type, client_id, created_by, status, currency, invoice_date, due_date, contract_no, po_number, vendor_code, invoice_period, subtotal, vat_rate, vat_amount, grand_total, amount_in_words, notes, prepared_by_user_id, created_at, updated_at, bank_account_id, billing_address_override, discount_amount, public_token, sealed_at, sealed_by_user_id, service_entry_number, pdf_title
 `
 
 type UpdateInvoiceStatusParams struct {
@@ -527,6 +534,7 @@ func (q *Queries) UpdateInvoiceStatus(ctx context.Context, arg UpdateInvoiceStat
 		&i.SealedAt,
 		&i.SealedByUserID,
 		&i.ServiceEntryNumber,
+		&i.PdfTitle,
 	)
 	return i, err
 }

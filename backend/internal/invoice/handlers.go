@@ -64,6 +64,7 @@ type createInvoiceRequest struct {
 	BillingAddress     string           `json:"billing_address"`
 	DiscountAmount     float64          `json:"discount_amount"`
 	ServiceEntryNumber string           `json:"service_entry_number"`
+	PdfTitle           string           `json:"pdf_title"`
 	Sections           []sectionRequest `json:"sections"`
 }
 
@@ -106,6 +107,7 @@ type invoiceResponse struct {
 	BankAccountID      string            `json:"bank_account_id,omitempty"`
 	BillingAddress     string            `json:"billing_address"`
 	ServiceEntryNumber string            `json:"service_entry_number"`
+	PdfTitle           string            `json:"pdf_title"`
 	CreatedAt          string            `json:"created_at"`
 	SealedAt           string            `json:"sealed_at,omitempty"`
 	PublicToken        string            `json:"public_token"`
@@ -327,6 +329,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		BankAccountID:          bankAccountID,
 		BillingAddressOverride: req.BillingAddress,
 		ServiceEntryNumber:     req.ServiceEntryNumber,
+		PdfTitle:               req.PdfTitle,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not create invoice")
@@ -553,6 +556,7 @@ func toInvoiceResponse(inv sqlc.Invoice) invoiceResponse {
 		Notes:              inv.Notes,
 		BillingAddress:     inv.BillingAddressOverride,
 		ServiceEntryNumber: inv.ServiceEntryNumber,
+		PdfTitle:           inv.PdfTitle,
 		CreatedAt:          inv.CreatedAt.Time.Format(time.RFC3339),
 		PublicToken:        db.UUIDToString(inv.PublicToken),
 	}

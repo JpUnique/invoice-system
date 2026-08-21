@@ -66,6 +66,7 @@ type InvoiceView struct {
 	ContractNo         string
 	PoNumber           string
 	ServiceEntryNumber string
+	PdfTitle           string
 	VendorCode         string
 	InvoicePeriod      string
 	Subtotal           float64

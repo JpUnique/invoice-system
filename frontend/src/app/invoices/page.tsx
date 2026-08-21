@@ -43,11 +43,11 @@ function InvoicesContent() {
     if (!token) return;
     setDownloadingId(inv.id);
     try {
-      const blob = await api.getInvoicePdfBlob(token, inv.id);
+      const { blob, filename } = await api.getInvoicePdfBlob(token, inv.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${inv.invoice_no.replace(/\//g, "-")}.pdf`;
+      a.download = filename ?? `${inv.invoice_no.replace(/\//g, "-")}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {

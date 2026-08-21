@@ -72,6 +72,7 @@ function NewInvoiceContent() {
   const [contractNo, setContractNo] = useState("");
   const [poNumber, setPoNumber] = useState("");
   const [serviceEntryNumber, setServiceEntryNumber] = useState("");
+  const [pdfTitle, setPdfTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [sections, setSections] = useState<SectionForm[]>([emptySection()]);
   const [discountAmount, setDiscountAmount] = useState("");
@@ -239,6 +240,7 @@ function NewInvoiceContent() {
         billing_address: billingAddress || undefined,
         discount_amount: discount || undefined,
         service_entry_number: serviceEntryNumber || undefined,
+        pdf_title: pdfTitle || undefined,
         sections: payloadSections,
       });
       router.push(`/invoices/${invoice.id}`);
@@ -395,6 +397,15 @@ function NewInvoiceContent() {
                 value={serviceEntryNumber}
                 onChange={(e) => setServiceEntryNumber(e.target.value)}
                 placeholder="Optional — not all clients require this"
+              />
+            </Label>
+
+            <Label>
+              PDF Title
+              <Input
+                value={pdfTitle}
+                onChange={(e) => setPdfTitle(e.target.value)}
+                placeholder="Optional — defaults to the invoice number"
               />
             </Label>
 
