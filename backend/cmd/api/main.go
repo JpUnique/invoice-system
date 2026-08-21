@@ -77,6 +77,12 @@ func main() {
 		AllowedOrigins:   cfg.CORSAllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		// Content-Disposition isn't on the CORS-safelisted response header
+		// list, so cross-origin fetches (the "bypassing Caddy" setup in
+		// .env.example) can't read the server-computed PDF filename off the
+		// response without this — same-origin requests are unaffected either
+		// way since CORS doesn't apply to them.
+		ExposedHeaders:   []string{"Content-Disposition"},
 		AllowCredentials: true,
 	}))
 

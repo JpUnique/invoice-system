@@ -84,6 +84,7 @@ func (h *Handler) buildInvoiceHTML(ctx context.Context, inv sqlc.Invoice) (html 
 		ContractNo:         inv.ContractNo,
 		PoNumber:           inv.PoNumber,
 		ServiceEntryNumber: inv.ServiceEntryNumber,
+		PdfTitle:           inv.PdfTitle,
 		VendorCode:         inv.VendorCode,
 		InvoicePeriod:      inv.InvoicePeriod,
 		Subtotal:           inv.Subtotal,
@@ -159,7 +160,11 @@ func (h *Handler) buildInvoiceHTML(ctx context.Context, inv sqlc.Invoice) (html 
 		return "", "", fmt.Errorf("could not render invoice: %w", err)
 	}
 
-	filename = fmt.Sprintf("%s.pdf", strings.ReplaceAll(inv.InvoiceNo, "/", "-"))
+	filenameBase := inv.InvoiceNo
+	if inv.PdfTitle != "" {
+		filenameBase = inv.PdfTitle
+	}
+	filename = fmt.Sprintf("%s.pdf", strings.ReplaceAll(filenameBase, "/", "-"))
 	return renderedHTML, filename, nil
 }
 
